@@ -1,0 +1,9 @@
+{
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "test": "node --test tests/*.test.js",
+    "package": "npm test && V=$(node -p \"require('./manifest.json').version\") && rm -f ../store-listing/extension-guardian-$V.zip && zip -qr ../store-listing/extension-guardian-$V.zip manifest.json icons src && unzip -l ../store-listing/extension-guardian-$V.zip",
+    "store-images": "dev/make-store-images.sh"
+  }
+}
