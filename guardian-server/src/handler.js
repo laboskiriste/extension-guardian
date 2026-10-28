@@ -61,6 +61,8 @@ async function mapLimited(items, limit, fn) {
   return out;
 }
 
+const GOOGLE_VERIFICATION = 'google2567422271cb329d.html';
+
 const html = (body, status = 200) => new Response(body, { status, headers: { 'Content-Type': 'text/html; charset=utf-8' } });
 
 // The public checker site: home page, one page per extension, popular list,
@@ -82,6 +84,8 @@ async function checkerPage(url, { fetchImpl, cache }) {
     return new Response(renderSitemap(POPULAR), { headers: { 'Content-Type': 'application/xml; charset=utf-8' } });
   }
   if (url.pathname === '/robots.txt') return new Response(ROBOTS, { headers: { 'Content-Type': 'text/plain; charset=utf-8' } });
+  // Google Search Console ownership check. Keep it, or the site loses verification.
+  if (url.pathname === `/${GOOGLE_VERIFICATION}`) return html(`google-site-verification: ${GOOGLE_VERIFICATION}`);
   return null;
 }
 
