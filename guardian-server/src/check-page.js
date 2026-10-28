@@ -93,8 +93,17 @@ function resultHtml(id, info) {
     <li class="${s.kind}"><span class="mark" aria-hidden="true">${s.kind === 'good' ? '✓' : '!'}</span>
       <div><strong>${escapeHtml(s.title)}</strong><span class="muted">${escapeHtml(s.detail)}</span></div></li>`).join('');
   const storeUrl = `https://chromewebstore.google.com/detail/${id}`;
+  const name = info.title ?? 'Unknown extension';
+  const icon = info.icon?.startsWith('https://lh3.googleusercontent.com/')
+    ? `<img class="ext-icon" src="${escapeHtml(info.icon)}" alt="" width="56" height="56">`
+    : `<span class="ext-icon letter" aria-hidden="true">${escapeHtml(name.trim()[0]?.toUpperCase() ?? '?')}</span>`;
+  const maker = info.developerName ?? info.offeredBy;
+  const facts = [maker && `by ${escapeHtml(maker)}`, info.users && `${escapeHtml(info.users)} users`].filter(Boolean).join(' · ');
   return `
   <section class="card verdict-card ${verdict}">
+    <div class="ext-head">${icon}
+      <div><h2>${escapeHtml(name)}</h2>
+      <span class="muted">${facts || `ID ${id}`}</span></div></div>
     <div class="verdict"><span class="verdict-icon" aria-hidden="true">${ICONS[verdict]}</span>
       <div><strong>${v.label}</strong><span>${v.text}</span></div></div>
     ${list ? `<ul class="signals">${list}</ul>` : ''}
@@ -173,6 +182,10 @@ const STYLE = `
   .card { background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 22px; margin: 0 0 16px; box-shadow: var(--shadow); }
   h2 { font-size: 18px; margin: 0 0 12px; }
   .muted { color: var(--muted); }
+  .ext-head { display: flex; align-items: center; gap: 16px; margin-bottom: 18px; }
+  .ext-head h2 { font-size: 24px; line-height: 1.2; margin: 0 0 2px; overflow-wrap: anywhere; }
+  .ext-icon { flex: none; width: 56px; height: 56px; border-radius: 14px; background: #fff; border: 1px solid var(--line); object-fit: contain; padding: 6px; }
+  .ext-icon.letter { display: grid; place-items: center; padding: 0; background: var(--accent-soft); color: var(--accent); font-size: 26px; font-weight: 800; }
   .verdict { display: flex; gap: 14px; align-items: center; padding: 14px 16px; border-radius: 12px; }
   .verdict div { display: flex; flex-direction: column; }
   .verdict strong { font-size: 19px; }

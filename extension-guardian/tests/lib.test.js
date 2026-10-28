@@ -28,6 +28,7 @@ test('parses a company developer', () => {
   assert.equal(info.website, 'darkreader.org');
   assert.equal(info.trader, 'trader');
   assert.match(info.version, /^\d+\.\d+/);
+  assert.match(info.icon, /^https:\/\/lh3\.googleusercontent\.com\//);
 });
 
 test('parses an individual developer', () => {

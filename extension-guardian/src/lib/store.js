@@ -86,6 +86,8 @@ export function parseStorePage(html) {
     version: detailValue(html, 'Version'),
     updated: detailValue(html, 'Updated'),
     users: />([\d,.]+\+?) users</.exec(html)?.[1] ?? null,
+    // The listing's icon, used by the web checker. Only Google's image host is accepted.
+    icon: /<meta property="og:image" content="(https:\/\/lh3\.googleusercontent\.com\/[^"]+)"/.exec(html)?.[1] ?? null,
   };
 }
 
