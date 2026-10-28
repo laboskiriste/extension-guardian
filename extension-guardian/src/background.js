@@ -149,8 +149,11 @@ async function ensureAlarm() {
   }
 }
 
-chrome.runtime.onInstalled.addListener(({ reason }) => {
+chrome.runtime.onInstalled.addListener(async ({ reason }) => {
   ensureAlarm();
+  // When the popup may first ask for a rating. Users updating from 0.1.0 start counting now.
+  const { installedAt } = await chrome.storage.local.get('installedAt');
+  if (!installedAt) await chrome.storage.local.set({ installedAt: Date.now() });
   if (reason === 'install') {
     serial(() => scanInstalled({ baseline: true }));
     serial(() => checkStore());

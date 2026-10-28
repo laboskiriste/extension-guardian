@@ -4,7 +4,10 @@
 // IDs and nothing about the user.
 import { parseStorePage } from '../../extension-guardian/src/lib/store.js';
 import { PRIVACY_HTML } from './privacy.js';
-import { extractId, renderCheckPage } from './check-page.js';
+import {
+  extractId, extensionPath, renderCheckPage, renderPopularPage, renderSitemap, ROBOTS,
+} from './check-page.js';
+import { POPULAR } from './popular.js';
 
 // Each id may need one store request; the Workers free plan allows 50 per call.
 const MAX_IDS = 40;
@@ -58,19 +61,39 @@ async function mapLimited(items, limit, fn) {
   return out;
 }
 
+const html = (body, status = 200) => new Response(body, { status, headers: { 'Content-Type': 'text/html; charset=utf-8' } });
+
+// The public checker site: home page, one page per extension, popular list,
+// and what search engines need to find them. Returns null for other paths.
+async function checkerPage(url, { fetchImpl, cache }) {
+  const safeLookup = (id) => lookup(id, { fetchImpl, cache }).catch((err) => ({ status: 'error', message: err.message }));
+  if (url.pathname === '/') {
+    const query = url.searchParams.get('q') ?? '';
+    const id = extractId(query);
+    if (!id) return html(renderCheckPage({ query, popular: POPULAR }));
+    const info = await safeLookup(id);
+    const target = info.status === 'ok' ? extensionPath(id, info.title) : `/extension/${id}`;
+    return new Response(null, { status: 302, headers: { Location: target } });
+  }
+  const match = /^\/extension\/(?:[a-z0-9-]+\/)?([a-p]{32})\/?$/.exec(url.pathname);
+  if (match) return html(renderCheckPage({ id: match[1], info: await safeLookup(match[1]) }));
+  if (url.pathname === '/popular') return html(renderPopularPage(POPULAR));
+  if (url.pathname === '/sitemap.xml') {
+    return new Response(renderSitemap(POPULAR), { headers: { 'Content-Type': 'application/xml; charset=utf-8' } });
+  }
+  if (url.pathname === '/robots.txt') return new Response(ROBOTS, { headers: { 'Content-Type': 'text/plain; charset=utf-8' } });
+  return null;
+}
+
 export async function handleRequest(request, { fetchImpl = fetch, cache = null } = {}) {
   if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: CORS });
   const url = new URL(request.url);
   if (request.method === 'GET' && url.pathname === '/privacy') {
     return new Response(PRIVACY_HTML, { headers: { 'Content-Type': 'text/html; charset=utf-8' } });
   }
-  if (request.method === 'GET' && url.pathname === '/') {
-    const query = url.searchParams.get('q') ?? '';
-    const id = extractId(query);
-    const info = id
-      ? await lookup(id, { fetchImpl, cache }).catch((err) => ({ status: 'error', message: err.message }))
-      : null;
-    return new Response(renderCheckPage({ query, id, info }), { headers: { 'Content-Type': 'text/html; charset=utf-8' } });
+  if (request.method === 'GET') {
+    const page = await checkerPage(url, { fetchImpl, cache });
+    if (page) return page;
   }
   if (request.method !== 'GET' || url.pathname !== '/v1/store') return json({ error: 'not found' }, 404);
 

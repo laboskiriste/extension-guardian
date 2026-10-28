@@ -43,7 +43,9 @@ const RECENT_MS = 30 * 24 * 60 * 60 * 1000;
 async function load() {
   const [all, stored] = await Promise.all([
     chrome.management.getAll(),
-    chrome.storage.local.get({ storeInfo: {}, alerts: [], lastStoreCheckAt: null, storeError: null }),
+    chrome.storage.local.get({
+      storeInfo: {}, alerts: [], lastStoreCheckAt: null, storeError: null, installedAt: null, ratePrompt: null,
+    }),
   ]);
   const exts = all
     .filter((e) => e.type === 'extension' && e.id !== chrome.runtime.id)
@@ -132,6 +134,28 @@ function alertCard(alert) {
   );
 }
 
+// Asked once, after a week of use, and never while a serious alert is open.
+const RATE_AFTER_MS = 7 * 24 * 60 * 60 * 1000;
+
+function showRatePrompt() {
+  return !data.ratePrompt && data.installedAt && Date.now() - data.installedAt >= RATE_AFTER_MS
+    && !data.alerts.some((a) => a.severity === 'high');
+}
+
+function ratePrompt() {
+  const answer = async (value) => { await chrome.storage.local.set({ ratePrompt: value }); refresh(); };
+  return h('article', { class: 'alert low rate' },
+    h('strong', {}, 'Is Extension Guardian useful to you?'),
+    h('p', {}, 'A rating in the Chrome Web Store helps other people find it. It takes ten seconds.'),
+    h('div', { class: 'actions' },
+      h('a', {
+        class: 'link', href: `${storePageUrl(chrome.runtime.id)}/reviews`, target: '_blank', onclick: () => answer('rated'),
+      }, 'Rate it ↗'),
+      h('button', { class: 'link muted', onclick: () => answer('dismissed') }, 'No thanks'),
+    ),
+  );
+}
+
 function storeDetails(ext, store) {
   if (!isFromChromeWebStore(ext)) {
     const why = ext.installType === 'development' ? 'Loaded by you as an unpacked extension.'
@@ -211,6 +235,7 @@ function render() {
     header(),
     summary(),
     unseenFirst.length > 0 && h('section', { class: 'alerts' }, h('h2', {}, 'Alerts'), unseenFirst.map(alertCard)),
+    showRatePrompt() && ratePrompt(),
     h('section', {},
       h('h2', {}, 'Your extensions'),
       data.exts.length

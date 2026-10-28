@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Extension Guardian",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Warns you when an extension is risky, changes owner, gains new permissions or disappears from the Chrome Web Store.",
   "minimum_chrome_version": "116",
   "permissions": ["management", "storage", "alarms", "notifications"],

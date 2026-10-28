@@ -2,7 +2,12 @@
 
 Get warned when a Chrome extension you use is sold, gains new permissions, or disappears from the Chrome Web Store.
 
+[![Chrome Web Store](https://img.shields.io/chrome-web-store/v/mpceklcidiadoneogfmpkjpadihmlcjd?label=Chrome%20Web%20Store)](https://chromewebstore.google.com/detail/extension-guardian/mpceklcidiadoneogfmpkjpadihmlcjd)
+[![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
+
 **[Install from the Chrome Web Store](https://chromewebstore.google.com/detail/extension-guardian/mpceklcidiadoneogfmpkjpadihmlcjd)** · Free · No account · No analytics
+
+Not ready to install anything? **[Check a single extension on the web](https://app.extensionguardian.workers.dev)**: paste its store link to see who makes it, how many people use it, and whether it's maintained.
 
 ![Extension Guardian popup](store-listing/screenshot-1.png)
 
@@ -31,7 +36,7 @@ Your list of extensions and every result stay on your device. Chrome doesn't let
 | Folder | What it is |
 | --- | --- |
 | [`extension-guardian/`](extension-guardian) | The Chrome extension (Manifest V3, no build step). See its [README](extension-guardian/README.md). |
-| [`guardian-server/`](guardian-server) | Cloudflare Worker that reads Chrome Web Store pages, plus a Node dev server |
+| [`guardian-server/`](guardian-server) | Cloudflare Worker that reads Chrome Web Store pages for the extension and serves the [web checker](https://app.extensionguardian.workers.dev), plus a Node dev server |
 | [`store-listing/`](store-listing) | Store listing text and screenshots |
 
 ## Run it locally

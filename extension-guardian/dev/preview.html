@@ -56,6 +56,11 @@
       lastStoreCheckAt: ago(2),
     };
     const changed = [];
+    // ?rate shows the rating prompt: installed over a week ago, no serious alerts open.
+    if (new URLSearchParams(location.search).has('rate')) {
+      store.installedAt = Date.now() - 8 * 24 * 60 * 60 * 1000;
+      store.alerts = store.alerts.filter((a) => a.severity !== 'high');
+    }
     window.chrome = {
       runtime: {
         id: 'self',
@@ -73,7 +78,10 @@
         uninstall: async (id) => { if (confirm('Remove?')) exts = exts.filter((e) => e.id !== id); },
       },
       storage: {
-        local: { get: async (defaults) => structuredClone({ ...defaults, ...store }) },
+        local: {
+          get: async (defaults) => structuredClone({ ...defaults, ...store }),
+          set: async (values) => { Object.assign(store, values); },
+        },
         onChanged: { addListener: () => {} },
       },
       tabs: { create: () => {} },

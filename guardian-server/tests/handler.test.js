@@ -61,13 +61,29 @@ test('check page shows the form, and results for a pasted store link', async () 
   assert.match(await empty.text(), /Is this Chrome extension safe\?/);
 
   const link = encodeURIComponent(`https://chromewebstore.google.com/detail/dark-reader/${DARK}?hl=en`);
-  const html = await (await get(`/?q=${link}`)).text();
+  const redirect = await get(`/?q=${link}`);
+  assert.equal(redirect.status, 302);
+  assert.equal(redirect.headers.get('Location'), `/extension/dark-reader/${DARK}`);
+
+  const html = await (await get(`/extension/dark-reader/${DARK}`)).text();
   assert.match(html, /<title>Is Dark Reader safe\?/);
   assert.match(html, /Dark Reader Ltd/);
   assert.match(html, /Registered business/);
+  assert.match(html, new RegExp(`rel="canonical" href="[^"]+/extension/dark-reader/${DARK}"`));
 
-  assert.match(await (await get(`/?q=${GONE}`)).text(), /Not in the Chrome Web Store/);
+  assert.equal((await get(`/?q=${GONE}`)).headers.get('Location'), `/extension/${GONE}`);
+  assert.match(await (await get(`/extension/${GONE}`)).text(), /Not in the Chrome Web Store/);
   assert.match(await (await get('/?q=hello')).text(), /doesn't look like a Chrome Web Store link/);
+});
+
+test('popular page, sitemap and robots.txt', async () => {
+  const { POPULAR } = await import('../src/popular.js');
+  const popular = await (await get('/popular')).text();
+  assert.match(popular, new RegExp(`/extension/[a-z0-9-]+/${POPULAR[0].id}`));
+  const sitemap = await get('/sitemap.xml');
+  assert.match(sitemap.headers.get('Content-Type'), /xml/);
+  assert.equal((await sitemap.text()).match(/<loc>/g).length, POPULAR.length + 2);
+  assert.match(await (await get('/robots.txt')).text(), /Sitemap: .+\/sitemap\.xml/);
 });
 
 test('check page escapes store text', async () => {

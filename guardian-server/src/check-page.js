@@ -108,18 +108,22 @@ function resultHtml(id, info) {
   </section>`;
 }
 
-export function renderCheckPage({ query = '', id = null, info = null } = {}) {
-  const title = info?.title
-    ? `Is ${escapeHtml(info.title)} safe? · Extension Guardian`
-    : 'Is this Chrome extension safe? · Extension Guardian';
-  const invalid = query && !id;
+export const SITE = 'https://app.extensionguardian.workers.dev';
+
+export const slugify = (name) => (String(name).split(/\s[-–—:|]\s|:\s/)[0].toLowerCase()
+  .replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 50).replace(/-+$/, '')) || 'extension';
+
+export const extensionPath = (id, name) => `/extension/${slugify(name)}/${id}`;
+
+function layout({ title, description, canonical, body }) {
   return `<!doctype html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>${title}</title>
-<meta name="description" content="Paste a Chrome Web Store link to see who makes an extension, how many people use it, and whether it is maintained. Free, no sign-up.">
+<meta name="description" content="${description}">
+${canonical ? `<link rel="canonical" href="${SITE}${canonical}">` : ''}
 <style>
   :root { color-scheme: light dark; --accent: #1f7a4d; --bad: #b3261e; --mixed: #9a6700; --line: #8884; }
   body { font: 16px/1.6 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; max-width: 720px; margin: 40px auto; padding: 0 16px; }
@@ -141,21 +145,76 @@ export function renderCheckPage({ query = '', id = null, info = null } = {}) {
   dt { opacity: .72; } dd { margin: 0; overflow-wrap: anywhere; }
   .error { color: var(--bad); }
   footer { margin-top: 40px; font-size: 14px; }
+  .popular { columns: 2 220px; padding-left: 18px; }
+  .popular li { margin: 2px 0; break-inside: avoid; }
 </style>
 </head>
 <body>
-<h1>Is this Chrome extension safe?</h1>
-<p class="muted">Paste a Chrome Web Store link or extension ID. You'll see who makes it, how many people use it, and whether it's maintained.</p>
-<form method="get" action="/">
-  <input name="q" value="${escapeHtml(query)}" placeholder="https://chromewebstore.google.com/detail/…" aria-label="Chrome Web Store link or extension ID" required>
-  <button type="submit">Check</button>
-</form>
-${invalid ? '<p class="error">That doesn\'t look like a Chrome Web Store link. Copy the address of the extension\'s store page and paste it here.</p>' : ''}
-${id && info ? resultHtml(id, info) : ''}
+${body}
 <footer class="muted">
-  Made by <a href="${STORE_LINK}">Extension Guardian</a> · <a href="${GITHUB_LINK}">Source</a> · <a href="/privacy">Privacy</a><br>
+  Made by <a href="${STORE_LINK}">Extension Guardian</a> · <a href="/popular">Popular extensions</a> · <a href="${GITHUB_LINK}">Source</a> · <a href="/privacy">Privacy</a><br>
   Based only on the public Chrome Web Store listing. Not a malware scan.
 </footer>
 </body>
 </html>`;
 }
+
+const form = (query) => `
+<form method="get" action="/">
+  <input name="q" value="${escapeHtml(query)}" placeholder="https://chromewebstore.google.com/detail/…" aria-label="Chrome Web Store link or extension ID" required>
+  <button type="submit">Check</button>
+</form>`;
+
+const popularList = (items) => `<ul class="popular">${items
+  .map((e) => `<li><a href="${extensionPath(e.id, e.name)}">${escapeHtml(e.name)}</a></li>`).join('')}</ul>`;
+
+export function renderCheckPage({ query = '', id = null, info = null, popular = [] } = {}) {
+  const name = info?.title ? escapeHtml(info.title) : null;
+  const invalid = query && !id;
+  const intro = name
+    ? `<h1>Is ${name} safe?</h1>
+<p class="muted">What the Chrome Web Store listing says about who makes it, how many people use it, and whether it's maintained.</p>`
+    : `<h1>Is this Chrome extension safe?</h1>
+<p class="muted">Paste a Chrome Web Store link or extension ID. You'll see who makes it, how many people use it, and whether it's maintained.</p>`;
+  const body = `${intro}
+${name ? '' : form(query)}
+${invalid ? '<p class="error">That doesn\'t look like a Chrome Web Store link. Copy the address of the extension\'s store page and paste it here.</p>' : ''}
+${id && info ? resultHtml(id, info) : ''}
+${name ? `<h3>Check another extension</h3>${form('')}` : ''}
+${!id && popular.length ? `<h3>Popular checks</h3>${popularList(popular.slice(0, 20))}<p><a href="/popular">All popular extensions</a></p>` : ''}`;
+  return layout({
+    title: name ? `Is ${name} safe? · Extension Guardian` : 'Is this Chrome extension safe? · Extension Guardian',
+    description: name
+      ? `Who makes ${name}, how many people use it, and whether it is still maintained, from its Chrome Web Store listing.`
+      : 'Paste a Chrome Web Store link to see who makes an extension, how many people use it, and whether it is maintained. Free, no sign-up.',
+    canonical: id && info?.status === 'ok' ? extensionPath(id, info.title) : (id ? null : '/'),
+    body,
+  });
+}
+
+export function renderPopularPage(popular) {
+  return layout({
+    title: 'Are popular Chrome extensions safe? · Extension Guardian',
+    description: 'Who makes the most-used Chrome extensions, how many people use them, and whether they are maintained.',
+    canonical: '/popular',
+    body: `<h1>Popular Chrome extensions</h1>
+<p class="muted">The ${popular.length} most-used extensions in the Chrome Web Store. Pick one to see who makes it and whether it's maintained.</p>
+${popularList(popular)}
+<h3>Check any other extension</h3>${form('')}`,
+  });
+}
+
+export function renderSitemap(popular) {
+  const urls = ['/', '/popular', ...popular.map((e) => extensionPath(e.id, e.name))];
+  return `<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+${urls.map((u) => `  <url><loc>${SITE}${u}</loc></url>`).join('\n')}
+</urlset>
+`;
+}
+
+export const ROBOTS = `User-agent: *
+Allow: /
+Disallow: /v1/
+Sitemap: ${SITE}/sitemap.xml
+`;
