@@ -4,6 +4,7 @@
 // IDs and nothing about the user.
 import { parseStorePage } from '../../extension-guardian/src/lib/store.js';
 import { PRIVACY_HTML } from './privacy.js';
+import { extractId, renderCheckPage } from './check-page.js';
 
 // Each id may need one store request; the Workers free plan allows 50 per call.
 const MAX_IDS = 40;
@@ -62,6 +63,14 @@ export async function handleRequest(request, { fetchImpl = fetch, cache = null }
   const url = new URL(request.url);
   if (request.method === 'GET' && url.pathname === '/privacy') {
     return new Response(PRIVACY_HTML, { headers: { 'Content-Type': 'text/html; charset=utf-8' } });
+  }
+  if (request.method === 'GET' && url.pathname === '/') {
+    const query = url.searchParams.get('q') ?? '';
+    const id = extractId(query);
+    const info = id
+      ? await lookup(id, { fetchImpl, cache }).catch((err) => ({ status: 'error', message: err.message }))
+      : null;
+    return new Response(renderCheckPage({ query, id, info }), { headers: { 'Content-Type': 'text/html; charset=utf-8' } });
   }
   if (request.method !== 'GET' || url.pathname !== '/v1/store') return json({ error: 'not found' }, 404);
 

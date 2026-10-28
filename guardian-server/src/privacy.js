@@ -37,6 +37,10 @@ for every request. It does not record which IDs came from which person.</p>
 <p>The server runs on Cloudflare Workers. Like any website, Cloudflare receives your IP address when the extension connects, and processes it
 under the <a href="https://www.cloudflare.com/privacypolicy/">Cloudflare Privacy Policy</a> to operate and protect its network. We do not log or store IP addresses.</p>
 
+<h2>The website checker</h2>
+<p>The page at <a href="/">app.extensionguardian.workers.dev</a> checks one extension at a time. It receives only the store link or ID you
+paste in, looks up the same public store information, and keeps it for up to 6 hours in the same way. It uses no cookies and no analytics.</p>
+
 <h2>What we never do</h2>
 <ul>
   <li>We do not sell or share your data.</li>
