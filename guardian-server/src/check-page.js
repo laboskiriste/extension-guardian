@@ -2,6 +2,8 @@
 // extension using only its Chrome Web Store listing, the same data the
 // extension uses, and points visitors to the extension for what a web page
 // can't see: permissions and changes over time.
+import { INCIDENTS, incidentFor, incidentPath, reportedName } from './incidents.js';
+
 const STORE_LINK = 'https://chromewebstore.google.com/detail/extension-guardian/mpceklcidiadoneogfmpkjpadihmlcjd';
 const GITHUB_LINK = 'https://github.com/laboskiriste/extension-guardian';
 const DAY = 24 * 60 * 60 * 1000;
@@ -83,35 +85,7 @@ const SHIELD = `<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentC
 
 const ICONS = { good: '✓', mixed: '!', bad: '!' };
 
-function resultHtml(id, info) {
-  if (info.status === 'error') {
-    return `<section class="card"><p>The Chrome Web Store didn't answer just now. Please try again in a minute.</p></section>`;
-  }
-  const { verdict, signals } = storeSignals(info);
-  const v = VERDICTS[verdict];
-  const list = signals.map((s) => `
-    <li class="${s.kind}"><span class="mark" aria-hidden="true">${s.kind === 'good' ? '✓' : '!'}</span>
-      <div><strong>${escapeHtml(s.title)}</strong><span class="muted">${escapeHtml(s.detail)}</span></div></li>`).join('');
-  const storeUrl = `https://chromewebstore.google.com/detail/${id}`;
-  const name = info.title ?? 'Unknown extension';
-  const icon = info.icon?.startsWith('https://lh3.googleusercontent.com/')
-    ? `<img class="ext-icon" src="${escapeHtml(info.icon)}" alt="" width="56" height="56">`
-    : `<span class="ext-icon letter" aria-hidden="true">${escapeHtml(name.trim()[0]?.toUpperCase() ?? '?')}</span>`;
-  const maker = info.developerName ?? info.offeredBy;
-  const facts = [maker && `by ${escapeHtml(maker)}`, info.users && `${escapeHtml(info.users)} users`].filter(Boolean).join(' · ');
-  return `
-  <section class="card verdict-card ${verdict}">
-    <div class="ext-head">${icon}
-      <div><h2>${escapeHtml(name)}</h2>
-      <span class="muted">${facts || `ID ${id}`}</span></div></div>
-    <div class="verdict"><span class="verdict-icon" aria-hidden="true">${ICONS[verdict]}</span>
-      <div><strong>${v.label}</strong><span>${v.text}</span></div></div>
-    ${list ? `<ul class="signals">${list}</ul>` : ''}
-  </section>
-  ${info.status === 'ok' ? `<section class="card">
-    <h2>Who makes it</h2><dl>${developerRows(info)}</dl>
-    <p class="store-link"><a href="${storeUrl}" rel="noopener">View in the Chrome Web Store ↗</a></p>
-  </section>` : ''}
+const CTA = `
   <section class="card cta">
     <div class="cta-icon">${SHIELD}</div>
     <div>
@@ -123,6 +97,48 @@ function resultHtml(id, info) {
       <a class="button" href="${STORE_LINK}" rel="noopener">Add to Chrome, it's free</a>
     </div>
   </section>`;
+
+function incidentHtml(id) {
+  const incident = incidentFor(id);
+  if (!incident) return '';
+  return `
+  <section class="card alert">
+    <h2>Named in a malware report</h2>
+    <p>This extension is listed in a report from ${escapeHtml(incident.reported)}: ${escapeHtml(incident.title)}.
+    If you have it installed, remove it.</p>
+    <p><a href="${incidentPath(incident)}">What happened and what to do →</a></p>
+  </section>`;
+}
+
+function resultHtml(id, info) {
+  if (info.status === 'error') {
+    return `<section class="card"><p>The Chrome Web Store didn't answer just now. Please try again in a minute.</p></section>`;
+  }
+  const { verdict, signals } = storeSignals(info);
+  const v = VERDICTS[verdict];
+  const list = signals.map((s) => `
+    <li class="${s.kind}"><span class="mark" aria-hidden="true">${s.kind === 'good' ? '✓' : '!'}</span>
+      <div><strong>${escapeHtml(s.title)}</strong><span class="muted">${escapeHtml(s.detail)}</span></div></li>`).join('');
+  const storeUrl = `https://chromewebstore.google.com/detail/${id}`;
+  const name = info.title ?? reportedName(id) ?? 'Unknown extension';
+  const icon = info.icon?.startsWith('https://lh3.googleusercontent.com/')
+    ? `<img class="ext-icon" src="${escapeHtml(info.icon)}" alt="" width="56" height="56">`
+    : `<span class="ext-icon letter" aria-hidden="true">${escapeHtml(name.trim()[0]?.toUpperCase() ?? '?')}</span>`;
+  const maker = info.developerName ?? info.offeredBy;
+  const facts = [maker && `by ${escapeHtml(maker)}`, info.users && `${escapeHtml(info.users)} users`].filter(Boolean).join(' · ');
+  return `${incidentHtml(id)}
+  <section class="card verdict-card ${verdict}">
+    <div class="ext-head">${icon}
+      <div><h2>${escapeHtml(name)}</h2>
+      <span class="muted">${facts || `ID ${id}`}</span></div></div>
+    <div class="verdict"><span class="verdict-icon" aria-hidden="true">${ICONS[verdict]}</span>
+      <div><strong>${v.label}</strong><span>${v.text}</span></div></div>
+    ${list ? `<ul class="signals">${list}</ul>` : ''}
+  </section>
+  ${info.status === 'ok' ? `<section class="card">
+    <h2>Who makes it</h2><dl>${developerRows(info)}</dl>
+    <p class="store-link"><a href="${storeUrl}" rel="noopener">View in the Chrome Web Store ↗</a></p>
+  </section>` : ''}${CTA}`;
 }
 
 export const SITE = 'https://app.extensionguardian.workers.dev';
@@ -211,6 +227,15 @@ const STYLE = `
   .popular a { display: block; padding: 10px 14px; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; text-decoration: none; color: var(--text); font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; transition: border-color .15s, transform .15s; }
   .popular a:hover { border-color: var(--accent); transform: translateY(-1px); }
   .more { margin: 14px 4px 0; }
+  .alert { background: var(--bad-soft); border-color: color-mix(in srgb, var(--bad) 35%, var(--line)); }
+  .alert h2 { color: var(--bad); }
+  .alert p { margin: 0 0 8px; } .alert p:last-child { margin: 0; }
+  .text { margin: 0; } .note { margin: 12px 0 0; }
+  .ext-list { list-style: none; padding: 0; margin: 0; }
+  .ext-list li { padding: 10px 0; border-top: 1px solid var(--line); overflow-wrap: anywhere; }
+  .ext-list li:first-child { border-top: 0; }
+  .ext-list .muted { display: block; font-size: 13px; font-family: ui-monospace, monospace; }
+  .steps { margin: 0; padding-left: 22px; } .steps li { margin-bottom: 8px; }
   footer { padding: 32px 0 48px; font-size: 14px; color: var(--muted); text-align: center; }
   footer a { color: var(--muted); }
   @media (max-width: 560px) {
@@ -247,7 +272,7 @@ ${canonical ? `<link rel="canonical" href="${SITE}${canonical}">` : ''}
 ${body}
 </main>
 <footer class="wrap">
-  <a href="${STORE_LINK}">Extension Guardian</a> · <a href="/popular">Popular extensions</a> · <a href="${GITHUB_LINK}">Source</a> · <a href="/privacy">Privacy</a><br>
+  <a href="${STORE_LINK}">Extension Guardian</a> · <a href="/popular">Popular extensions</a> · <a href="${incidentPath(INCIDENTS[0])}">Latest incident</a> · <a href="${GITHUB_LINK}">Source</a> · <a href="/privacy">Privacy</a><br>
   Based only on the public Chrome Web Store listing. Not a malware scan.
 </footer>
 </body>
@@ -266,7 +291,8 @@ const popularList = (items) => `<ul class="popular">${items
 const INVALID = '<p class="error">That doesn\'t look like a Chrome Web Store link. Copy the address of the extension\'s store page and paste it here.</p>';
 
 export function renderCheckPage({ query = '', id = null, info = null, popular = [] } = {}) {
-  const name = info?.title ? escapeHtml(info.title) : null;
+  const knownName = info?.title ?? (id && reportedName(id));
+  const name = knownName ? escapeHtml(knownName) : null;
   const invalid = query && !id;
   const hero = name || id
     ? `<h1>Is ${name ?? 'this extension'} safe?</h1>
@@ -305,8 +331,62 @@ ${form('')}`,
   });
 }
 
+const incidentList = (extensions) => `<ul class="ext-list">${extensions.map((e) => {
+  const href = e.store === 'edge'
+    ? `https://microsoftedge.microsoft.com/addons/detail/${e.id}`
+    : extensionPath(e.id, e.name);
+  const where = e.store === 'edge' ? 'Edge add-on' : 'Chrome';
+  return `<li><a href="${href}"${e.store === 'edge' ? ' rel="noopener"' : ''}>${escapeHtml(e.name)}</a>
+    <span class="muted">${where} · ${e.id}</span></li>`;
+}).join('')}</ul>`;
+
+export function renderIncidentPage(incident) {
+  const acquired = incident.extensions.filter((e) => e.acquired);
+  const built = incident.extensions.filter((e) => !e.acquired);
+  const sources = incident.sources
+    .map((s) => `<li><a href="${escapeHtml(s.url)}" rel="noopener">${escapeHtml(s.name)}</a></li>`).join('');
+  return layout({
+    title: `${escapeHtml(incident.title)} · Extension Guardian`,
+    description: escapeHtml(incident.summary),
+    canonical: incidentPath(incident),
+    hero: `<h1>${escapeHtml(incident.title)}</h1>
+<p class="lead">Reported ${escapeHtml(incident.reported)}. ${escapeHtml(incident.summary)}</p>`,
+    body: `
+<section class="card">
+  <h2>Why the bought ones matter</h2>
+  <p class="text">An extension that changes hands keeps its name, icon, reviews and users. Chrome installs the new owner's
+  update quietly, and nothing tells you that someone else is now behind it. People who had trusted these
+  extensions for months got the malware without doing anything.</p>
+</section>
+<section class="card">
+  <h2>What to do if you have one</h2>
+  <ol class="steps">
+    <li>Open <strong>chrome://extensions</strong> (or <strong>edge://extensions</strong>) and remove any extension from the lists below.</li>
+    <li>If you used a crypto wallet in that browser, move your funds to a new wallet created on a clean device.
+    Don't reuse the old recovery phrase.</li>
+    <li>Change passwords you typed or saved in that browser, starting with email and banking, and turn on two-factor sign-in.</li>
+    <li>Remove extensions you no longer use. Fewer extensions means fewer chances for this to happen again.</li>
+  </ol>
+</section>
+<section class="card">
+  <h2>Bought from their original developers (${acquired.length})</h2>
+  ${incidentList(acquired)}
+</section>
+<section class="card">
+  <h2>Built by the attackers (${built.length})</h2>
+  ${incidentList(built)}
+  <p class="muted note">Each Chrome link opens the extension's checker page, which shows whether it is still in the store.</p>
+</section>
+<section class="card">
+  <h2>Sources</h2>
+  <ul>${sources}</ul>
+</section>
+${CTA}`,
+  });
+}
+
 export function renderSitemap(popular) {
-  const urls = ['/', '/popular', ...popular.map((e) => extensionPath(e.id, e.name))];
+  const urls = ['/', '/popular', ...INCIDENTS.map(incidentPath), ...popular.map((e) => extensionPath(e.id, e.name))];
   return `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
 ${urls.map((u) => `  <url><loc>${SITE}${u}</loc></url>`).join('\n')}

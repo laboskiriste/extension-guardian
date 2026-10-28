@@ -82,8 +82,30 @@ test('popular page, sitemap and robots.txt', async () => {
   assert.match(popular, new RegExp(`/extension/[a-z0-9-]+/${POPULAR[0].id}`));
   const sitemap = await get('/sitemap.xml');
   assert.match(sitemap.headers.get('Content-Type'), /xml/);
-  assert.equal((await sitemap.text()).match(/<loc>/g).length, POPULAR.length + 2);
+  assert.equal((await sitemap.text()).match(/<loc>/g).length, POPULAR.length + 3);
   assert.match(await (await get('/robots.txt')).text(), /Sitemap: .+\/sitemap\.xml/);
+});
+
+test('incident page lists the extensions, and their check pages link back', async () => {
+  const { INCIDENTS } = await import('../src/incidents.js');
+  const [incident] = INCIDENTS;
+  assert.equal(incident.extensions.length, 19);
+  assert.ok(incident.extensions.every((e) => /^[a-p]{32}$/.test(e.id)));
+
+  const page = await get(`/incidents/${incident.slug}`);
+  assert.equal(page.status, 200);
+  const html = await page.text();
+  assert.match(html, /Bought from their original developers \(5\)/);
+  assert.match(html, /Built by the attackers \(14\)/);
+  assert.match(html, /\/extension\/enable-right-click-copy\/pkoccklolohdacbfooifnpebakpbeipc/);
+  assert.match(html, /microsoftedge\.microsoft\.com\/addons\/detail\/inmkjedjdhgpknjogbjomhnbgdccckkg/);
+  assert.equal((await get('/incidents/nope')).status, 404);
+
+  const named = await (await get('/extension/pkoccklolohdacbfooifnpebakpbeipc')).text();
+  assert.match(named, /Named in a malware report/);
+  assert.match(named, /<title>Is Enable Right Click &amp; Copy – Smart Unlock \+ OCR safe\?/);
+  assert.match(named, new RegExp(`href="/incidents/${incident.slug}"`));
+  assert.doesNotMatch(await (await get(`/extension/dark-reader/${DARK}`)).text(), /Named in a malware report/);
 });
 
 test('check page escapes store text', async () => {

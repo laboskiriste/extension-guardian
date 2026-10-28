@@ -5,8 +5,9 @@
 import { parseStorePage } from '../../extension-guardian/src/lib/store.js';
 import { PRIVACY_HTML } from './privacy.js';
 import {
-  extractId, extensionPath, renderCheckPage, renderPopularPage, renderSitemap, ROBOTS,
+  extractId, extensionPath, renderCheckPage, renderIncidentPage, renderPopularPage, renderSitemap, ROBOTS,
 } from './check-page.js';
+import { findIncident } from './incidents.js';
 import { POPULAR } from './popular.js';
 
 // Each id may need one store request; the Workers free plan allows 50 per call.
@@ -80,6 +81,8 @@ async function checkerPage(url, { fetchImpl, cache }) {
   const match = /^\/extension\/(?:[a-z0-9-]+\/)?([a-p]{32})\/?$/.exec(url.pathname);
   if (match) return html(renderCheckPage({ id: match[1], info: await safeLookup(match[1]) }));
   if (url.pathname === '/popular') return html(renderPopularPage(POPULAR));
+  const incident = findIncident(/^\/incidents\/([a-z0-9-]+)\/?$/.exec(url.pathname)?.[1]);
+  if (incident) return html(renderIncidentPage(incident));
   if (url.pathname === '/sitemap.xml') {
     return new Response(renderSitemap(POPULAR), { headers: { 'Content-Type': 'application/xml; charset=utf-8' } });
   }
