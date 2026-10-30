@@ -5,11 +5,12 @@
 import { parseStorePage } from '../../extension-guardian/src/lib/store.js';
 import { PRIVACY_HTML } from './privacy.js';
 import {
-  extractId, extensionPath, renderCheckPage, renderIncidentPage, renderPopularPage, renderReportPage, renderSitemap, REPORT_PATH, ROBOTS,
+  extractId, extensionPath, renderCheckPage, renderIncidentPage, renderPopularPage, renderReportPage, renderSitemap, REPORT_PATH, OG_DEFAULT_PATH, OG_REPORT_PATH, ROBOTS,
 } from './check-page.js';
 import { findIncident } from './incidents.js';
 import { POPULAR } from './popular.js';
 import { REPORT } from './report-data.js';
+import { OG_DEFAULT, OG_REPORT } from './og-images.js';
 
 const MAX_IDS = 40;
 // The Workers free plan allows 50 outgoing requests per call, and each store
@@ -89,6 +90,10 @@ async function checkerPage(url, { fetchImpl, cache }) {
   const match = /^\/extension\/(?:[a-z0-9-]+\/)?([a-p]{32})\/?$/.exec(url.pathname);
   if (match) return html(renderCheckPage({ id: match[1], info: await safeLookup(match[1]) }));
   if (url.pathname === '/popular') return html(renderPopularPage(POPULAR));
+  if (url.pathname === OG_DEFAULT_PATH || url.pathname === OG_REPORT_PATH) {
+    const png = Uint8Array.from(atob(url.pathname === OG_REPORT_PATH ? OG_REPORT : OG_DEFAULT), (c) => c.charCodeAt(0));
+    return new Response(png, { headers: { 'Content-Type': 'image/png', 'Cache-Control': 'public, max-age=86400' } });
+  }
   if (url.pathname === REPORT_PATH) return html(renderReportPage(REPORT));
   if (url.pathname === `${REPORT_PATH}.json`) {
     return new Response(JSON.stringify(REPORT, null, 1), { headers: { ...CORS, 'Content-Type': 'application/json' } });

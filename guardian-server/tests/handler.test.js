@@ -149,3 +149,12 @@ test('a large batch stays within the outgoing request limit', async () => {
   assert.equal(results.filter((r) => r.status === 'ok').length, 20);
   assert.equal(results.filter((r) => r.code === 'busy').length, 10);
 });
+
+test('pages carry link previews', async () => {
+  const report = await (await get('/report/popular-chrome-extensions-2026')).text();
+  assert.match(report, /<meta property="og:image" content="https:\/\/[^"]+\/og\/report\.png">/);
+  assert.match(await (await get('/')).text(), /og\/default\.png/);
+  const img = await get('/og/report.png');
+  assert.equal(img.headers.get('Content-Type'), 'image/png');
+  assert.deepEqual([...new Uint8Array(await img.arrayBuffer()).slice(1, 4)], [80, 78, 71]);
+});

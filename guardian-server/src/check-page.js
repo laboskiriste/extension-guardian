@@ -142,6 +142,8 @@ function resultHtml(id, info) {
 }
 
 export const SITE = 'https://app.extensionguardian.workers.dev';
+export const OG_DEFAULT_PATH = '/og/default.png';
+export const OG_REPORT_PATH = '/og/report.png';
 
 export const slugify = (name) => (String(name).split(/\s[-–—:|]\s|:\s/)[0].toLowerCase()
   .replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 50).replace(/-+$/, '')) || 'extension';
@@ -264,7 +266,7 @@ const STYLE = `
   }
 `;
 
-function layout({ title, description, canonical, hero, body }) {
+function layout({ title, description, canonical, hero, body, image = OG_DEFAULT_PATH }) {
   return `<!doctype html>
 <html lang="en">
 <head>
@@ -274,6 +276,15 @@ function layout({ title, description, canonical, hero, body }) {
 <meta name="description" content="${description}">
 <meta name="theme-color" content="#1f7a4d">
 ${canonical ? `<link rel="canonical" href="${SITE}${canonical}">` : ''}
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Extension Guardian">
+<meta property="og:title" content="${title.replace(/ · Extension Guardian$/, '')}">
+<meta property="og:description" content="${description}">
+${canonical ? `<meta property="og:url" content="${SITE}${canonical}">` : ''}
+<meta property="og:image" content="${SITE}${image}">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
 <style>${STYLE}</style>
 </head>
 <body>
@@ -434,6 +445,7 @@ export function renderReportPage(r) {
     title: `We checked the ${r.listed} most popular Chrome extensions · Extension Guardian`,
     description: `${pct(r.broad, r.analyzed)} of the most popular Chrome extensions can read and change everything on every website. What they can access, who makes them, and which ones are no longer maintained.`,
     canonical: REPORT_PATH,
+    image: OG_REPORT_PATH,
     hero: `<h1>We checked the ${r.listed} most popular Chrome extensions</h1>
 <p class="lead">What they can access, who makes them, and which ones nobody is updating anymore. Data from ${date}.</p>`,
     body: `
