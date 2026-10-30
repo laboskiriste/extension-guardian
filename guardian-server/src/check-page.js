@@ -233,6 +233,8 @@ const STYLE = `
   .avatar { flex: none; width: 30px; height: 30px; border-radius: 8px; display: grid; place-items: center; font-weight: 800; font-size: 14px;
     background: hsl(var(--h) 60% 92%); color: hsl(var(--h) 55% 32%); }
   .wide { max-width: 1080px; }
+  main.wide { margin-top: 32px; }
+  .hero:has(.wide) { padding-bottom: 48px; }
   .eyebrow { display: inline-block; margin: 0 0 14px; padding: 4px 12px; border-radius: 999px; background: #ffffff1f; border: 1px solid #ffffff33; font-size: 13px; font-weight: 600; letter-spacing: .02em; color: #e3f2ea; }
   .hero-grid { display: grid; grid-template-columns: 1.15fr .85fr; gap: 48px; align-items: center; }
   .hero-grid h1 { font-size: clamp(32px, 5vw, 52px); }
