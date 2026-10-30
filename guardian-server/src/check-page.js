@@ -3,6 +3,7 @@
 // extension uses, and points visitors to the extension for what a web page
 // can't see: permissions and changes over time.
 import { INCIDENTS, incidentFor, incidentPath, reportedName } from './incidents.js';
+import { REPORT } from './report-data.js';
 
 const STORE_LINK = 'https://chromewebstore.google.com/detail/extension-guardian/mpceklcidiadoneogfmpkjpadihmlcjd';
 const GITHUB_LINK = 'https://github.com/laboskiriste/extension-guardian';
@@ -187,7 +188,7 @@ const STYLE = `
   .nav { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 40px; }
   .nav a.install { color: #fff; font-size: 14px; font-weight: 600; text-decoration: none; padding: 6px 12px; border: 1px solid #ffffff55; border-radius: 999px; white-space: nowrap; }
   .nav a.install:hover { background: #ffffff1a; }
-  h1 { font-size: clamp(28px, 5vw, 42px); line-height: 1.15; margin: 0 0 12px; letter-spacing: -.02em; }
+  h1 { font-size: clamp(28px, 5vw, 42px); line-height: 1.1; margin: 0 0 14px; letter-spacing: -.025em; font-weight: 800; }
   .lead { font-size: 18px; margin: 0; color: #e3f2ea; max-width: 600px; }
   .search { display: flex; gap: 8px; margin-top: 28px; padding: 8px; background: var(--surface); border-radius: 14px; box-shadow: 0 10px 30px rgb(0 0 0 / 20%); }
   .search input { flex: 1; min-width: 0; font: inherit; padding: 12px 14px; border: 0; background: transparent; color: var(--text); outline: none; }
@@ -226,8 +227,38 @@ const STYLE = `
   .cta-icon svg { width: 44px; height: 44px; color: var(--accent); --shield-check: var(--surface); }
   .section-title { font-size: 14px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); margin: 28px 4px 12px; }
   .popular { list-style: none; padding: 0; margin: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 8px; }
-  .popular a { display: block; padding: 10px 14px; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; text-decoration: none; color: var(--text); font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; transition: border-color .15s, transform .15s; }
-  .popular a:hover { border-color: var(--accent); transform: translateY(-1px); }
+  .popular a { display: flex; align-items: center; gap: 10px; padding: 8px 12px 8px 8px; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; text-decoration: none; color: var(--text); font-size: 15px; font-weight: 500; transition: border-color .15s, transform .15s, box-shadow .15s; }
+  .popular a:hover { border-color: var(--accent); transform: translateY(-1px); box-shadow: var(--shadow); }
+  .popular .name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .avatar { flex: none; width: 30px; height: 30px; border-radius: 8px; display: grid; place-items: center; font-weight: 800; font-size: 14px;
+    background: hsl(var(--h) 60% 92%); color: hsl(var(--h) 55% 32%); }
+  .wide { max-width: 1080px; }
+  .eyebrow { display: inline-block; margin: 0 0 14px; padding: 4px 12px; border-radius: 999px; background: #ffffff1f; border: 1px solid #ffffff33; font-size: 13px; font-weight: 600; letter-spacing: .02em; color: #e3f2ea; }
+  .hero-grid { display: grid; grid-template-columns: 1.15fr .85fr; gap: 48px; align-items: center; }
+  .hero-grid h1 { font-size: clamp(32px, 5vw, 52px); }
+  .demo { display: grid; gap: 12px; transform: rotate(-1.5deg); }
+  .demo-card { display: flex; gap: 12px; align-items: flex-start; padding: 14px 16px; border-radius: 14px; background: var(--surface); color: var(--text); box-shadow: 0 14px 40px rgb(0 0 0 / 25%); border-left: 4px solid var(--c); }
+  .demo-card:nth-child(2) { margin-left: 28px; } .demo-card:nth-child(3) { margin-left: 12px; opacity: .92; }
+  .demo-card div { display: flex; flex-direction: column; font-size: 14px; line-height: 1.45; }
+  .demo-card strong { font-size: 15px; }
+  .demo-card span:not(.demo-dot) { color: var(--muted); }
+  .demo-dot { flex: none; width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; font-weight: 800; font-size: 14px; background: var(--c); color: #fff; }
+  .demo-card.bad { --c: var(--bad); } .demo-card.mixed { --c: var(--mixed); } .demo-card.good { --c: var(--accent); }
+  .teaser { display: flex; gap: 22px; align-items: center; padding: 22px 26px; margin: 0 0 16px; border-radius: 16px; text-decoration: none; color: var(--text); background: var(--surface); border: 1px solid var(--line); box-shadow: var(--shadow); transition: border-color .15s, transform .15s; }
+  .teaser:hover { border-color: var(--accent); transform: translateY(-1px); }
+  .teaser > strong { font-size: 52px; line-height: 1; color: var(--accent); letter-spacing: -.03em; }
+  .teaser > span { display: flex; flex-direction: column; gap: 4px; font-size: 17px; }
+  .teaser .muted { font-size: 15px; }
+  .features { padding: 40px 0 8px; text-align: center; }
+  .section-head { font-size: clamp(24px, 3.5vw, 32px); letter-spacing: -.02em; margin: 0 0 8px; }
+  .section-sub { color: var(--muted); max-width: 560px; margin: 0 auto 28px; font-size: 17px; }
+  .feature-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; text-align: left; }
+  .feature { background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 22px; box-shadow: var(--shadow); }
+  .feature svg { width: 40px; height: 40px; padding: 8px; border-radius: 12px; background: var(--accent-soft); color: var(--accent); }
+  .feature h3 { margin: 14px 0 6px; font-size: 18px; }
+  .feature p { margin: 0; color: var(--muted); font-size: 15px; }
+  .feature-cta { display: flex; flex-direction: column; align-items: center; gap: 10px; margin: 28px 0 0; font-size: 14px; }
+  .button.big { padding: 14px 28px; font-size: 17px; border-radius: 12px; box-shadow: 0 6px 18px color-mix(in srgb, var(--accent) 35%, transparent); }
   .more { margin: 14px 4px 0; }
   .alert { background: var(--bad-soft); border-color: color-mix(in srgb, var(--bad) 35%, var(--line)); }
   .alert h2 { color: var(--bad); }
@@ -256,7 +287,16 @@ const STYLE = `
   .table-wrap { overflow-x: auto; }
   footer { padding: 32px 0 48px; font-size: 14px; color: var(--muted); text-align: center; }
   footer a { color: var(--muted); }
+  @media (prefers-color-scheme: dark) {
+    .avatar { background: hsl(var(--h) 30% 22%); color: hsl(var(--h) 65% 78%); }
+  }
+  @media (max-width: 860px) {
+    .hero-grid { grid-template-columns: 1fr; gap: 32px; }
+    .demo { transform: none; } .demo-card:nth-child(n) { margin-left: 0; }
+    .feature-grid { grid-template-columns: 1fr; }
+  }
   @media (max-width: 560px) {
+    .teaser { flex-direction: column; align-items: flex-start; gap: 10px; }
     .hero { padding-bottom: 56px; }
     .nav { margin-bottom: 28px; }
     .lead { font-size: 16px; }
@@ -266,7 +306,8 @@ const STYLE = `
   }
 `;
 
-function layout({ title, description, canonical, hero, body, image = OG_DEFAULT_PATH }) {
+function layout({ title, description, canonical, hero, body, image = OG_DEFAULT_PATH, wide = false }) {
+  const wrap = wide ? 'wrap wide' : 'wrap';
   return `<!doctype html>
 <html lang="en">
 <head>
@@ -288,17 +329,17 @@ ${canonical ? `<meta property="og:url" content="${SITE}${canonical}">` : ''}
 <style>${STYLE}</style>
 </head>
 <body>
-<header class="hero"><div class="wrap">
+<header class="hero"><div class="${wrap}">
   <nav class="nav">
     <a class="brand" href="/">${SHIELD}Extension Guardian</a>
     <a class="install" href="${STORE_LINK}" rel="noopener">Add to Chrome</a>
   </nav>
   ${hero}
 </div></header>
-<main class="wrap">
+<main class="${wrap}">
 ${body}
 </main>
-<footer class="wrap">
+<footer class="${wrap}">
   <a href="${STORE_LINK}">Extension Guardian</a> · <a href="/popular">Popular extensions</a> · <a href="${REPORT_PATH}">Popular extensions report</a> · <a href="${incidentPath(INCIDENTS[0])}">Latest incident</a> · <a href="${GITHUB_LINK}">Source</a> · <a href="/privacy">Privacy</a><br>
   Based only on the public Chrome Web Store listing. Not a malware scan.
 </footer>
@@ -312,8 +353,46 @@ const form = (query, { autofocus = false } = {}) => `
   <button type="submit">Check</button>
 </form>`;
 
+// "AdBlock — block ads across the web" reads better as "AdBlock" in a grid.
+const shortName = (name) => String(name).split(/\s[-–—:|]\s|:\s/)[0].trim() || name;
+const hue = (s) => [...s].reduce((h, c) => (h * 31 + c.charCodeAt(0)) % 360, 7);
+
 const popularList = (items) => `<ul class="popular">${items
-  .map((e) => `<li><a href="${extensionPath(e.id, e.name)}" title="${escapeHtml(e.name)}">${escapeHtml(e.name)}</a></li>`).join('')}</ul>`;
+  .map((e) => `<li><a href="${extensionPath(e.id, e.name)}" title="${escapeHtml(e.name)}"><span class="avatar" style="--h:${hue(e.id)}" aria-hidden="true">${escapeHtml(shortName(e.name)[0]?.toUpperCase() ?? '?')}</span><span class="name">${escapeHtml(shortName(e.name))}</span></a></li>`).join('')}</ul>`;
+
+// Example alerts in the home hero. Made-up extensions, so no real one is accused.
+const DEMO = `
+<div class="demo" role="img" aria-label="Example alerts from the Extension Guardian extension">
+  <div class="demo-card bad"><span class="demo-dot">!</span><div><strong>Easy Tab Saver has a new owner</strong><span>The developer changed last night. The next update comes from someone else.</span></div></div>
+  <div class="demo-card mixed"><span class="demo-dot">!</span><div><strong>Quick PDF Tools wants more access</strong><span>The update now asks to read and change data on every website.</span></div></div>
+  <div class="demo-card good"><span class="demo-dot">✓</span><div><strong>Your other 12 extensions look fine</strong><span>Checked a minute ago.</span></div></div>
+</div>`;
+
+const ICON_PATHS = {
+  owner: 'M16 11a4 4 0 1 0-8 0 4 4 0 0 0 8 0ZM4 21a8 8 0 0 1 16 0',
+  key: 'M15 7a4 4 0 1 1-3.9 4.9L4 19v-3h3v-3h3l1.1-1.1A4 4 0 0 1 15 7Z',
+  gone: 'M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3',
+};
+const icon = (name) => `<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="${ICON_PATHS[name]}"/></svg>`;
+
+const FEATURES = `
+<section class="features">
+  <h2 class="section-head">What the extension watches for</h2>
+  <p class="section-sub">Extensions get sold, and Chrome installs the new owner's update without asking. Extension Guardian notices.</p>
+  <div class="feature-grid">
+    <div class="feature">${icon('owner')}<h3>A new owner</h3><p>Warns you when the developer on the store listing changes, the most common sign of a sale.</p></div>
+    <div class="feature">${icon('key')}<h3>New permissions</h3><p>Tells you when an update asks for more, like reading every website you visit.</p></div>
+    <div class="feature">${icon('gone')}<h3>Pulled from the store</h3><p>Google removes malware. If one you have disappears, you hear about it the same day.</p></div>
+  </div>
+  <p class="feature-cta"><a class="button big" href="${STORE_LINK}" rel="noopener">Add to Chrome, it's free</a><span class="muted">Open source · No account · Your list stays on your device</span></p>
+</section>`;
+
+const reportTeaser = () => `
+<a class="teaser" href="${REPORT_PATH}">
+  <strong>${pct(REPORT.broad, REPORT.analyzed)}</strong>
+  <span><b>of the ${REPORT.listed} most popular Chrome extensions can read and change everything on every website.</b>
+  <span class="muted">We checked who makes them and which ones nobody updates anymore. Read the report →</span></span>
+</a>`;
 
 const INVALID = '<p class="error">That doesn\'t look like a Chrome Web Store link. Copy the address of the extension\'s store page and paste it here.</p>';
 
@@ -324,18 +403,23 @@ export function renderCheckPage({ query = '', id = null, info = null, popular = 
   const hero = name || id
     ? `<h1>Is ${name ?? 'this extension'} safe?</h1>
 <p class="lead">What the Chrome Web Store listing says about who makes it, how many people use it, and whether it's maintained.</p>`
-    : `<h1>Is this Chrome extension safe?</h1>
+    : `<div class="hero-grid"><div>
+<p class="eyebrow">Free checker · No sign-up</p>
+<h1>Is this Chrome extension safe?</h1>
 <p class="lead">See who makes an extension, how many people use it, and whether it's still maintained, before you install it.</p>
 ${form(query, { autofocus: !query })}
-${invalid ? INVALID : '<p class="hint">Free, no sign-up. Works with any link from chromewebstore.google.com.</p>'}`;
+${invalid ? INVALID : '<p class="hint">Works with any link from chromewebstore.google.com.</p>'}
+</div>${DEMO}</div>`;
   const body = id && info
     ? `${resultHtml(id, info)}
 <h2 class="section-title">Check another extension</h2>
 <div class="card">${form('')}</div>`
     : popular.length
-      ? `<div class="card"><h2>New: we checked the ${popular.length} most popular extensions</h2><p class="text">Most of them can read and change everything on every website. <a href="${REPORT_PATH}">See what else we found →</a></p></div>
-<div class="card"><h2>Popular checks</h2>${popularList(popular.slice(0, 18))}<p class="more"><a href="/popular">All ${popular.length} popular extensions →</a></p></div>`
+      ? `${reportTeaser()}
+<section class="card"><h2>Popular checks</h2>${popularList(popular.slice(0, 20))}<p class="more"><a href="/popular">All ${popular.length} popular extensions →</a></p></section>
+${FEATURES}`
       : '';
+  const home = !id && !invalid;
   return layout({
     title: name ? `Is ${name} safe? · Extension Guardian` : 'Is this Chrome extension safe? · Extension Guardian',
     description: name
@@ -344,6 +428,7 @@ ${invalid ? INVALID : '<p class="hint">Free, no sign-up. Works with any link fro
     canonical: id && info?.status === 'ok' ? extensionPath(id, info.title) : (id ? null : '/'),
     hero,
     body,
+    wide: home,
   });
 }
 
