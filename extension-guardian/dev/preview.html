@@ -21,7 +21,7 @@
         permissions: ['storage', 'alarms', 'scripting'], hostPermissions: ['<all_urls>'] },
       { id: 'cccc', name: 'Coupon Finder Pro', version: '1.0.4', enabled: true, mayDisable: true, type: 'extension', installType: 'sideload', updateUrl: 'https://cdn.coupon-deals.example/update.xml',
         permissions: ['tabs', 'history'], hostPermissions: ['*://*/*'] },
-      { id: 'hhhh', name: 'Edge Tab Groups', version: '1.4', enabled: true, mayDisable: true, type: 'extension', installType: 'normal', updateUrl: 'https://edge.microsoft.com/extensionwebstorebase/v1/crx',
+      { id: 'iiii', name: 'Edge Tab Groups', version: '1.4', enabled: true, mayDisable: true, type: 'extension', installType: 'normal', updateUrl: 'https://edge.microsoft.com/extensionwebstorebase/v1/crx',
         permissions: ['tabs', 'storage'], hostPermissions: [] },
       { id: 'dddd', name: 'Quick Translate', version: '2.0.16', enabled: true, mayDisable: true, type: 'extension', installType: 'normal', updateUrl: cws,
         permissions: ['activeTab', 'contextMenus', 'storage'], hostPermissions: [] },
@@ -57,6 +57,14 @@
       ],
       lastStoreCheckAt: ago(2),
     };
+    // ?firefox: as if running in Firefox, with one add-on installed from a file.
+    if (new URLSearchParams(location.search).has('firefox')) {
+      window.browser = { runtime: { getBrowserInfo: async () => ({ name: 'Firefox' }) } };
+      exts = exts.filter((e) => e.id !== 'iiii');
+      store.storeInfo.hhhh = { status: 'unlisted', checkedAt: ago(2) };
+      store.alerts[2].title = 'Old Screenshot Tool was removed from Firefox Add-ons';
+      store.alerts[2].detail = 'Mozilla removes extensions for malware and policy violations. Consider removing it until you know why.';
+    }
     const changed = [];
     // ?rate shows the rating prompt: installed over a week ago, no serious alerts open.
     if (new URLSearchParams(location.search).has('rate')) {

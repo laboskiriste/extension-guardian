@@ -5,7 +5,7 @@
   <title>Store screenshot</title>
   <!-- Chrome Web Store screenshots (1280x800) and promo tile (440x280).
        Rendered by dev/make-store-images.sh with headless Chrome.
-       ?scene=1|2|3 picks a screenshot, ?scene=promo the promo tile. -->
+       ?scene=1|2|3 picks a screenshot, ?scene=promo the promo tile. ?firefox for Firefox Add-ons. -->
   <style>
     * { box-sizing: border-box; }
     html, body { margin: 0; }
@@ -35,8 +35,9 @@
 </head>
 <body>
   <script>
+    const firefox = new URLSearchParams(location.search).has('firefox');
     const scenes = {
-      1: { open: null, title: 'Know when an extension gets sold', text: 'Get warned when a developer changes, an update asks for more access, or an extension disappears from the Chrome Web Store.' },
+      1: { open: null, title: 'Know when an extension gets sold', text: `Get warned when a developer changes, an update asks for more access, or an extension disappears from ${firefox ? 'Firefox Add-ons' : 'the Chrome Web Store'}.` },
       2: { open: 'gggg', title: 'Risk explained in plain language', text: 'See exactly why an extension is risky, and what it can do with your data, without reading permission lists.' },
       3: { open: 'bbbb', title: 'Full access isn\'t always danger', text: 'Trusted, popular extensions stay green. Separate Access and Risk ratings mean you only get alerts that matter.' },
     };
@@ -50,7 +51,7 @@
         </div>`;
     } else {
       const s = scenes[scene];
-      const src = `preview.html?frame${s.open ? `&open=${s.open}` : ''}`;
+      const src = `preview.html?frame${firefox ? '&firefox' : ''}${s.open ? `&open=${s.open}` : ''}`;
       document.body.innerHTML = `
         <div class="copy">
           <div class="brand"><img src="../icons/icon128.png" alt="">Extension Guardian</div>

@@ -95,4 +95,4 @@ To test: install any add-on from AMO and one from a file, open the popup and pre
 Source: https://github.com/laboskiriste/extension-guardian (no build step; the package is the source).
 ```
 
-**Images**: icon from the package; screenshots (optional) `screenshot-1.png` to `screenshot-3.png` (they show the Chrome version, so add them only after taking Firefox ones, or skip).
+**Screenshots** (1280×800): `firefox-screenshot-1.png`, `firefox-screenshot-2.png`, `firefox-screenshot-3.png` (rebuild with `FIREFOX=1 npm run store-images`)
