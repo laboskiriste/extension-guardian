@@ -21,6 +21,8 @@
         permissions: ['storage', 'alarms', 'scripting'], hostPermissions: ['<all_urls>'] },
       { id: 'cccc', name: 'Coupon Finder Pro', version: '1.0.4', enabled: true, mayDisable: true, type: 'extension', installType: 'sideload', updateUrl: 'https://cdn.coupon-deals.example/update.xml',
         permissions: ['tabs', 'history'], hostPermissions: ['*://*/*'] },
+      { id: 'hhhh', name: 'Edge Tab Groups', version: '1.4', enabled: true, mayDisable: true, type: 'extension', installType: 'normal', updateUrl: 'https://edge.microsoft.com/extensionwebstorebase/v1/crx',
+        permissions: ['tabs', 'storage'], hostPermissions: [] },
       { id: 'dddd', name: 'Quick Translate', version: '2.0.16', enabled: true, mayDisable: true, type: 'extension', installType: 'normal', updateUrl: cws,
         permissions: ['activeTab', 'contextMenus', 'storage'], hostPermissions: [] },
       { id: 'eeee', name: 'Grammar Helper', version: '14.1', enabled: true, mayDisable: true, type: 'extension', installType: 'normal', updateUrl: cws,
@@ -64,6 +66,8 @@
     window.chrome = {
       runtime: {
         id: 'self',
+        // ?edge: as if installed from Edge Add-ons.
+        getManifest: () => ({ update_url: new URLSearchParams(location.search).has('edge') ? 'https://edge.microsoft.com/extensionwebstorebase/v1/crx' : cws }),
         getURL: (p) => '../' + p,
         sendMessage: async (msg) => {
           if (msg.type === 'dismiss') store.alerts = store.alerts.filter((a) => a.id !== msg.id);

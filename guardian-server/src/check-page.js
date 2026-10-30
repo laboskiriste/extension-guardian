@@ -236,6 +236,22 @@ const STYLE = `
   .ext-list li:first-child { border-top: 0; }
   .ext-list .muted { display: block; font-size: 13px; font-family: ui-monospace, monospace; }
   .steps { margin: 0; padding-left: 22px; } .steps li { margin-bottom: 8px; }
+  .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 12px; margin: 0 0 16px; }
+  .stat { margin: 0; }
+  .stat strong { display: block; font-size: 34px; line-height: 1.1; color: var(--accent); letter-spacing: -.02em; }
+  .stat span { display: block; margin-top: 6px; font-size: 15px; }
+  .bars { list-style: none; padding: 0; margin: 0; }
+  .bars li { display: grid; grid-template-columns: 1fr 52px; gap: 4px 12px; padding: 8px 0; border-top: 1px solid var(--line); }
+  .bars li:first-child { border-top: 0; }
+  .bars .bar { grid-column: 1 / -1; height: 6px; border-radius: 3px; background: var(--accent-soft); overflow: hidden; }
+  .bars .bar i { display: block; height: 100%; background: var(--accent); }
+  .bars b { text-align: right; }
+  .bars code { font-size: 13px; color: var(--muted); }
+  .table { width: 100%; border-collapse: collapse; font-size: 15px; }
+  .table th, .table td { text-align: left; padding: 8px 6px; border-top: 1px solid var(--line); vertical-align: top; }
+  .table th { color: var(--muted); font-weight: 600; font-size: 13px; border-top: 0; }
+  .table td:nth-child(2), .table th:nth-child(2) { text-align: right; white-space: nowrap; }
+  .table-wrap { overflow-x: auto; }
   footer { padding: 32px 0 48px; font-size: 14px; color: var(--muted); text-align: center; }
   footer a { color: var(--muted); }
   @media (max-width: 560px) {
@@ -272,7 +288,7 @@ ${canonical ? `<link rel="canonical" href="${SITE}${canonical}">` : ''}
 ${body}
 </main>
 <footer class="wrap">
-  <a href="${STORE_LINK}">Extension Guardian</a> · <a href="/popular">Popular extensions</a> · <a href="${incidentPath(INCIDENTS[0])}">Latest incident</a> · <a href="${GITHUB_LINK}">Source</a> · <a href="/privacy">Privacy</a><br>
+  <a href="${STORE_LINK}">Extension Guardian</a> · <a href="/popular">Popular extensions</a> · <a href="${REPORT_PATH}">Popular extensions report</a> · <a href="${incidentPath(INCIDENTS[0])}">Latest incident</a> · <a href="${GITHUB_LINK}">Source</a> · <a href="/privacy">Privacy</a><br>
   Based only on the public Chrome Web Store listing. Not a malware scan.
 </footer>
 </body>
@@ -306,7 +322,8 @@ ${invalid ? INVALID : '<p class="hint">Free, no sign-up. Works with any link fro
 <h2 class="section-title">Check another extension</h2>
 <div class="card">${form('')}</div>`
     : popular.length
-      ? `<div class="card"><h2>Popular checks</h2>${popularList(popular.slice(0, 18))}<p class="more"><a href="/popular">All ${popular.length} popular extensions →</a></p></div>`
+      ? `<div class="card"><h2>New: we checked the ${popular.length} most popular extensions</h2><p class="text">Most of them can read and change everything on every website. <a href="${REPORT_PATH}">See what else we found →</a></p></div>
+<div class="card"><h2>Popular checks</h2>${popularList(popular.slice(0, 18))}<p class="more"><a href="/popular">All ${popular.length} popular extensions →</a></p></div>`
       : '';
   return layout({
     title: name ? `Is ${name} safe? · Extension Guardian` : 'Is this Chrome extension safe? · Extension Guardian',
@@ -385,8 +402,93 @@ ${CTA}`,
   });
 }
 
+export const REPORT_PATH = '/report/popular-chrome-extensions-2026';
+
+const PERMISSION_LABELS = {
+  scripting: 'Run its own code on pages',
+  tabs: 'See the address and title of every tab',
+  webRequest: 'Watch your network requests',
+  cookies: 'Read and change cookies, including sign-ins',
+  webNavigation: 'See every page you visit, as you visit it',
+  identity: 'Sign in with your Google account',
+  nativeMessaging: 'Talk to programs installed on your computer',
+  history: 'Read your browsing history',
+  management: 'See and turn off your other extensions',
+  clipboardRead: 'Read your clipboard',
+  debugger: 'Take full control of pages through the debugger',
+};
+
+const millions = (n) => `${Math.round(n / 1e6).toLocaleString('en-US')} million`;
+const pct = (n, of) => `${Math.round((100 * n) / of)}%`;
+
+export function renderReportPage(r) {
+  const date = new Date(`${r.checked}T12:00:00Z`).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric', timeZone: 'UTC' });
+  const stat = (big, text) => `<div class="card stat"><strong>${big}</strong><span>${text}</span></div>`;
+  const bars = Object.entries(r.permissions).map(([name, n]) => `
+    <li><span>${escapeHtml(PERMISSION_LABELS[name] ?? name)} <code>${escapeHtml(name)}</code></span><b>${n}</b>
+      <span class="bar"><i style="width:${pct(n, r.analyzed)}"></i></span></li>`).join('');
+  const stale = r.stale.map((e) => `
+    <tr><td><a href="${extensionPath(e.id, e.name)}">${escapeHtml(e.name)}</a>${e.developer ? `<br><span class="muted">${escapeHtml(e.developer)}</span>` : ''}</td>
+      <td>${escapeHtml(e.users ?? '')}</td><td>${escapeHtml(e.updated ?? '')}</td></tr>`).join('');
+  return layout({
+    title: `We checked the ${r.listed} most popular Chrome extensions · Extension Guardian`,
+    description: `${pct(r.broad, r.analyzed)} of the most popular Chrome extensions can read and change everything on every website. What they can access, who makes them, and which ones are no longer maintained.`,
+    canonical: REPORT_PATH,
+    hero: `<h1>We checked the ${r.listed} most popular Chrome extensions</h1>
+<p class="lead">What they can access, who makes them, and which ones nobody is updating anymore. Data from ${date}.</p>`,
+    body: `
+<div class="stats">
+  ${stat(pct(r.broad, r.analyzed), `can read and change everything on every website you visit (${r.broad} of ${r.analyzed})`)}
+  ${stat(millions(r.broadInstalls), 'installs come with that all-sites access')}
+  ${stat(r.staleYear, `haven't been updated in over a year, ${r.staleTwoYears} of them in over two`)}
+  ${stat(r.broadNonTrader, `with all-sites access are run by developers who haven't registered as a business (${millions(r.broadNonTraderInstalls)} installs)`)}
+</div>
+<section class="card">
+  <h2>Full access is normal. That's the problem.</h2>
+  <p class="text">Most of these extensions need broad access to do their job: an ad blocker, a password manager or a grammar
+  checker can't work without reading the pages you open. We rate all ${r.lowRisk} of them as low risk today. They're popular,
+  maintained and have a named developer.</p>
+  <p class="note">The risk is what happens next. Extensions get sold, and the new owner inherits the users, the reviews and
+  every one of those permissions. Chrome installs the next update silently and never says that someone else is now behind it.
+  In <a href="${incidentPath(INCIDENTS[0])}">one campaign reported this year</a>, attackers bought established extensions and
+  turned them into password and crypto-wallet stealers.</p>
+</section>
+<section class="card">
+  <h2>What else they can do</h2>
+  <p class="text muted">How many of the ${r.analyzed} extensions ask for each permission.</p>
+  <ul class="bars">${bars}</ul>
+</section>
+<section class="card">
+  <h2>Full access, no update in over a year</h2>
+  <p class="text">${r.staleBroad} extensions with access to every website, used by ${millions(r.staleBroadInstalls)} people combined,
+  haven't shipped an update in more than a year. That doesn't make them unsafe, and some are simply finished. But a popular extension
+  that's no longer maintained is exactly what buyers look for.</p>
+  <div class="table-wrap"><table class="table">
+    <thead><tr><th>Extension</th><th>Users</th><th>Last updated</th></tr></thead>
+    <tbody>${stale}</tbody>
+  </table></div>
+</section>
+<section class="card">
+  <h2>How we checked</h2>
+  <ul class="steps">
+    <li>The list is the ${r.listed} extensions with the most users across the Chrome Web Store's categories.</li>
+    <li>Developer, user count, last update and trader status come from each public store listing, read on ${date}.</li>
+    <li>Permissions come from the manifest of the version currently in the store: required permissions, host permissions and the
+    sites its content scripts run on. Optional permissions an extension may ask for later aren't counted.
+    ${r.listed - r.analyzed ? `We couldn't read the package of ${r.listed - r.analyzed} extensions, so the figures cover ${r.analyzed}.` : ''}</li>
+    <li>User counts are the store's rounded numbers. They count installs, not people, so the totals overlap.</li>
+    <li>"Not registered as a business" means the developer declared themselves a non-trader in the store. For people in the EU,
+    consumer rights then don't apply to that developer.</li>
+  </ul>
+  <p class="note">Every extension above links to its own page with the full store details. The raw data is
+  <a href="${REPORT_PATH}.json">available as JSON</a>, free to reuse with a link back.</p>
+</section>
+${CTA}`,
+  });
+}
+
 export function renderSitemap(popular) {
-  const urls = ['/', '/popular', ...INCIDENTS.map(incidentPath), ...popular.map((e) => extensionPath(e.id, e.name))];
+  const urls = ['/', '/popular', REPORT_PATH, ...INCIDENTS.map(incidentPath), ...popular.map((e) => extensionPath(e.id, e.name))];
   return `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
 ${urls.map((u) => `  <url><loc>${SITE}${u}</loc></url>`).join('\n')}

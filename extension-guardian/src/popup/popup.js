@@ -1,5 +1,5 @@
-import { assessRisk, isFromChromeWebStore } from '../lib/risk.js';
-import { storePageUrl } from '../lib/store.js';
+import { assessRisk, isFromChromeWebStore, updateSource } from '../lib/risk.js';
+import { edgeStorePageUrl, storePageUrl } from '../lib/store.js';
 
 const app = document.getElementById('app');
 const inTab = new URLSearchParams(location.search).get('view') === 'tab';
@@ -134,6 +134,9 @@ function alertCard(alert) {
   );
 }
 
+// Stores add update_url to the manifest, so this tells which store we came from.
+const FROM_EDGE_STORE = updateSource({ updateUrl: chrome.runtime.getManifest().update_url }) === 'edge';
+
 // Asked once, after a week of use, and never while a serious alert is open.
 const RATE_AFTER_MS = 7 * 24 * 60 * 60 * 1000;
 
@@ -146,10 +149,10 @@ function ratePrompt() {
   const answer = async (value) => { await chrome.storage.local.set({ ratePrompt: value }); refresh(); };
   return h('article', { class: 'alert low rate' },
     h('strong', {}, 'Is Extension Guardian useful to you?'),
-    h('p', {}, 'A rating in the Chrome Web Store helps other people find it. It takes ten seconds.'),
+    h('p', {}, `A rating in ${FROM_EDGE_STORE ? 'Edge Add-ons' : 'the Chrome Web Store'} helps other people find it. It takes ten seconds.`),
     h('div', { class: 'actions' },
       h('a', {
-        class: 'link', href: `${storePageUrl(chrome.runtime.id)}/reviews`, target: '_blank', onclick: () => answer('rated'),
+        class: 'link', href: FROM_EDGE_STORE ? edgeStorePageUrl(chrome.runtime.id) : `${storePageUrl(chrome.runtime.id)}/reviews`, target: '_blank', onclick: () => answer('rated'),
       }, 'Rate it ↗'),
       h('button', { class: 'link muted', onclick: () => answer('dismissed') }, 'No thanks'),
     ),
@@ -160,6 +163,7 @@ function storeDetails(ext, store) {
   if (!isFromChromeWebStore(ext)) {
     const why = ext.installType === 'development' ? 'Loaded by you as an unpacked extension.'
       : ext.installType === 'admin' ? 'Installed by your organization.'
+      : updateSource(ext) === 'edge' ? 'Installed from Microsoft Edge Add-ons. Developer checks only cover the Chrome Web Store for now.'
       : 'Not installed from the Chrome Web Store, so we can\'t check its developer.';
     return h('p', { class: 'muted' }, why);
   }
@@ -223,6 +227,8 @@ function extensionRow({ ext, store, risk }) {
           onclick: async () => { try { await chrome.management.uninstall(ext.id, { showConfirmDialog: true }); } catch {} refresh(); },
         }, 'Remove'),
         isFromChromeWebStore(ext) && h('a', { class: 'link', href: storePageUrl(ext.id), target: '_blank' }, 'View in store ↗'),
+        ext.installType !== 'development' && updateSource(ext) === 'edge'
+          && h('a', { class: 'link', href: edgeStorePageUrl(ext.id), target: '_blank' }, 'View in store ↗'),
       ),
     ),
   );

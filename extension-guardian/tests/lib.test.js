@@ -53,7 +53,7 @@ test('fetchStoreInfoBatch splits large requests and drops server errors', async 
   };
   const ids = Array.from({ length: 60 }, (_, i) => `id${i}`);
   const out = await fetchStoreInfoBatch(ids, fake);
-  assert.equal(urls.length, 2);
+  assert.equal(urls.length, 3);
   assert.equal(Object.keys(out).length, 59);
   assert.equal(out.id7, undefined);
   await assert.rejects(fetchStoreInfoBatch(['a'], async () => ({ ok: false, status: 500 })), /500/);

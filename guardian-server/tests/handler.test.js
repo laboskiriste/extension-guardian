@@ -82,7 +82,7 @@ test('popular page, sitemap and robots.txt', async () => {
   assert.match(popular, new RegExp(`/extension/[a-z0-9-]+/${POPULAR[0].id}`));
   const sitemap = await get('/sitemap.xml');
   assert.match(sitemap.headers.get('Content-Type'), /xml/);
-  assert.equal((await sitemap.text()).match(/<loc>/g).length, POPULAR.length + 3);
+  assert.equal((await sitemap.text()).match(/<loc>/g).length, POPULAR.length + 4);
   assert.match(await (await get('/robots.txt')).text(), /Sitemap: .+\/sitemap\.xml/);
 });
 
@@ -127,4 +127,25 @@ test('rejects bad requests', async () => {
   assert.equal((await get('/v1/store?ids=not-an-id')).status, 400);
   assert.equal((await get(`/v1/store?ids=${Array(41).fill(0).map((_, i) => String.fromCharCode(97 + (i % 16)).repeat(31) + String.fromCharCode(97 + Math.floor(i / 16))).join(',')}`)).status, 400);
   assert.equal((await get('/other')).status, 404);
+});
+
+test('report page and its data', async () => {
+  const page = await (await get('/report/popular-chrome-extensions-2026')).text();
+  assert.match(page, /<h1>We checked the 150 most popular Chrome extensions<\/h1>/);
+  assert.match(page, /href="\/extension\/[a-z0-9-]+\/[a-p]{32}"/);
+  const data = await (await get('/report/popular-chrome-extensions-2026.json')).json();
+  assert.equal(data.stale.length, data.staleBroad);
+  assert.ok(data.broad <= data.analyzed);
+  assert.match(await (await get('/sitemap.xml')).text(), /popular-chrome-extensions-2026</);
+});
+
+test('a large batch stays within the outgoing request limit', async () => {
+  let fetches = 0;
+  const counting = async () => { fetches += 1; return new Response(fixture('dark-reader')); };
+  const ids = Array.from({ length: 30 }, (_, i) => 'abcdefghijklmnop'[i % 16].repeat(31) + 'abcdefghijklmnop'[Math.floor(i / 16)]);
+  const res = await handleRequest(new Request(`http://x/v1/store?ids=${ids.join(',')}`), { fetchImpl: counting, cache: null });
+  const results = Object.values((await res.json()).results);
+  assert.equal(fetches, 20);
+  assert.equal(results.filter((r) => r.status === 'ok').length, 20);
+  assert.equal(results.filter((r) => r.code === 'busy').length, 10);
 });

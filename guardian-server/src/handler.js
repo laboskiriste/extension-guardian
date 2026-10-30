@@ -5,13 +5,17 @@
 import { parseStorePage } from '../../extension-guardian/src/lib/store.js';
 import { PRIVACY_HTML } from './privacy.js';
 import {
-  extractId, extensionPath, renderCheckPage, renderIncidentPage, renderPopularPage, renderSitemap, ROBOTS,
+  extractId, extensionPath, renderCheckPage, renderIncidentPage, renderPopularPage, renderReportPage, renderSitemap, REPORT_PATH, ROBOTS,
 } from './check-page.js';
 import { findIncident } from './incidents.js';
 import { POPULAR } from './popular.js';
+import { REPORT } from './report-data.js';
 
-// Each id may need one store request; the Workers free plan allows 50 per call.
 const MAX_IDS = 40;
+// The Workers free plan allows 50 outgoing requests per call, and each store
+// page costs two (it redirects to a URL with the extension's name). Ids past
+// this budget get status "error", which the extension retries on its next check.
+const MAX_STORE_FETCHES = 20;
 const CONCURRENCY = 4;
 const CACHE_SECONDS = 6 * 60 * 60;
 const ID_PATTERN = /^[a-p]{32}$/;
@@ -29,10 +33,14 @@ function json(body, status = 200) {
   });
 }
 
-async function lookup(id, { fetchImpl, cache }) {
+async function lookup(id, { fetchImpl, cache, budget = null }) {
   const key = `https://cache.internal/store/${id}`;
   const hit = await cache?.match(key);
   if (hit) return hit.json();
+  if (budget) {
+    if (budget.left <= 0) return { status: 'error', code: 'busy' };
+    budget.left -= 1;
+  }
 
   const res = await fetchImpl(`https://chromewebstore.google.com/detail/${id}?hl=en`, {
     headers: { 'User-Agent': USER_AGENT, 'Accept-Language': 'en-US' },
@@ -81,6 +89,10 @@ async function checkerPage(url, { fetchImpl, cache }) {
   const match = /^\/extension\/(?:[a-z0-9-]+\/)?([a-p]{32})\/?$/.exec(url.pathname);
   if (match) return html(renderCheckPage({ id: match[1], info: await safeLookup(match[1]) }));
   if (url.pathname === '/popular') return html(renderPopularPage(POPULAR));
+  if (url.pathname === REPORT_PATH) return html(renderReportPage(REPORT));
+  if (url.pathname === `${REPORT_PATH}.json`) {
+    return new Response(JSON.stringify(REPORT, null, 1), { headers: { ...CORS, 'Content-Type': 'application/json' } });
+  }
   const incident = findIncident(/^\/incidents\/([a-z0-9-]+)\/?$/.exec(url.pathname)?.[1]);
   if (incident) return html(renderIncidentPage(incident));
   if (url.pathname === '/sitemap.xml') {
@@ -108,7 +120,8 @@ export async function handleRequest(request, { fetchImpl = fetch, cache = null }
   if (!ids.length) return json({ error: 'pass extension ids as ?ids=a,b,c' }, 400);
   if (ids.length > MAX_IDS) return json({ error: `at most ${MAX_IDS} ids per request` }, 400);
 
+  const budget = { left: MAX_STORE_FETCHES };
   const infos = await mapLimited(ids, CONCURRENCY, (id) =>
-    lookup(id, { fetchImpl, cache }).catch((err) => ({ status: 'error', message: err.message })));
+    lookup(id, { fetchImpl, cache, budget }).catch((err) => ({ status: 'error', message: err.message })));
   return json({ results: Object.fromEntries(ids.map((id, i) => [id, infos[i]])) });
 }

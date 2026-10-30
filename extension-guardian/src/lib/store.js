@@ -14,6 +14,10 @@ export function storePageUrl(id) {
   return `${STORE_URL}${id}`;
 }
 
+export function edgeStorePageUrl(id) {
+  return `https://microsoftedge.microsoft.com/addons/detail/${id}`;
+}
+
 function decode(text) {
   return text
     .replace(/&amp;/g, '&')
@@ -91,7 +95,7 @@ export function parseStorePage(html) {
   };
 }
 
-export const MAX_IDS_PER_REQUEST = 40;
+export const MAX_IDS_PER_REQUEST = 20;
 
 // Returns { [id]: info } for ids the server could check. Ids that failed on
 // the server's side (status "error") are left out, so callers keep old data.
