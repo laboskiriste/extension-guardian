@@ -4,3 +4,4 @@ node_modules/
 marketing/
 store-listing/*.zip
 .dev.vars
+extension-guardian/build/

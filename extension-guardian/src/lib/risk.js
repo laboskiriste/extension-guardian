@@ -1,6 +1,8 @@
 import { PERMISSIONS, BROAD_HOST, isBroadHost, hostLabel } from './permissions.js';
+import { STORE } from './platform.js';
 
-const CWS_UPDATE_HOSTS = ['clients2.google.com', 'update.googleapis.com'];
+// Chrome Web Store, and addons.mozilla.org for Firefox (which usually reports no update URL at all).
+const STORE_UPDATE_HOSTS = ['clients2.google.com', 'update.googleapis.com', 'versioncheck.addons.mozilla.org'];
 const EDGE_UPDATE_HOSTS = ['edge.microsoft.com'];
 const DAY = 24 * 60 * 60 * 1000;
 
@@ -12,14 +14,15 @@ export function updateSource(ext) {
   } catch {
     return 'unknown';
   }
-  if (CWS_UPDATE_HOSTS.includes(host)) return 'store';
+  if (STORE_UPDATE_HOSTS.includes(host)) return 'store';
   if (EDGE_UPDATE_HOSTS.includes(host)) return 'edge';
   return host;
 }
 
-// Whether the Chrome Web Store has a page for this extension we can check.
-// Includes extensions added by other programs, as long as they update from the store.
-export function isFromChromeWebStore(ext) {
+// Whether the store we check (Chrome Web Store, or Firefox Add-ons in Firefox)
+// should have a page for this extension. Includes extensions added by other
+// programs, as long as they update from the store.
+export function isFromStore(ext) {
   return ext.installType !== 'development' && updateSource(ext) === 'store';
 }
 
@@ -94,10 +97,17 @@ export function assessRisk(ext, { store, ownershipChanged = false, recentAccessI
       detail: 'This extension may have been sold. Sold extensions are often turned into adware or spyware.',
     });
   }
+  if (store?.status === 'unlisted') {
+    soft.push({
+      weight: full ? 20 : 10,
+      title: `Not listed on ${STORE.the}`,
+      detail: `It was installed from a file or another website. ${STORE.owner} signed it, but it has no public store page, so we can't check who makes it.`,
+    });
+  }
   if (store?.status === 'not_found') {
     critical.push({
-      title: 'No longer in the Chrome Web Store',
-      detail: 'Google removes extensions for malware and policy violations. It may also have been taken down by its developer.',
+      title: `No longer in ${STORE.the}`,
+      detail: `${STORE.owner} removes extensions for malware and policy violations. It may also have been taken down by its developer.`,
     });
   }
   if (ext.installType === 'sideload') {
@@ -108,7 +118,7 @@ export function assessRisk(ext, { store, ownershipChanged = false, recentAccessI
       soft.push({
         weight: 15,
         title: 'Installed by another program',
-        detail: 'You did not add it yourself. It is a normal Chrome Web Store extension, often added by Chrome or by software from the same company.',
+        detail: `You did not add it yourself. It is a normal ${STORE.name} extension, often added by ${STORE.browser} or by software from the same company.`,
       });
     } else {
       critical.push({
@@ -121,7 +131,7 @@ export function assessRisk(ext, { store, ownershipChanged = false, recentAccessI
   if (source !== 'store' && source !== 'edge' && ext.installType !== 'development') {
     critical.push({
       title: 'Updates from outside the store',
-      detail: `New versions come from ${source} and are not reviewed by Google.`,
+      detail: `New versions come from ${source} and are not reviewed by ${STORE.owner}.`,
     });
   }
 

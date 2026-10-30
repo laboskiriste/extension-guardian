@@ -1,5 +1,6 @@
 import { describePermission, hostLabel, isBroadHost } from './permissions.js';
 import { updateSource } from './risk.js';
+import { STORE } from './platform.js';
 
 // What we remember about an installed extension between checks.
 export function snapshotOf(ext) {
@@ -58,15 +59,15 @@ export function diffSnapshots(prev, cur) {
   return changes;
 }
 
-// Differences between two Chrome Web Store checks of the same extension.
+// Differences between two store checks of the same extension.
 export function diffStoreInfo(name, prev, cur) {
   if (!prev) return [];
   if (prev.status === 'ok' && cur.status === 'not_found') {
     return [{
       type: 'removed_from_store',
       severity: 'high',
-      title: `${name} was removed from the Chrome Web Store`,
-      detail: 'Google removes extensions for malware and policy violations. Consider removing it until you know why.',
+      title: `${name} was removed from ${STORE.the}`,
+      detail: `${STORE.owner} removes extensions for malware and policy violations. Consider removing it until you know why.`,
     }];
   }
   if (prev.status !== 'ok' || cur.status !== 'ok') return [];

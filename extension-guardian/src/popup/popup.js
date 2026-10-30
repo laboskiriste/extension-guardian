@@ -1,5 +1,6 @@
-import { assessRisk, isFromChromeWebStore, updateSource } from '../lib/risk.js';
-import { edgeStorePageUrl, storePageUrl } from '../lib/store.js';
+import { assessRisk, isFromStore, updateSource } from '../lib/risk.js';
+import { edgeStorePageUrl, reviewPageUrl, storePageUrl } from '../lib/store.js';
+import { IS_FIREFOX, STORE } from '../lib/platform.js';
 
 const app = document.getElementById('app');
 const inTab = new URLSearchParams(location.search).get('view') === 'tab';
@@ -149,10 +150,10 @@ function ratePrompt() {
   const answer = async (value) => { await chrome.storage.local.set({ ratePrompt: value }); refresh(); };
   return h('article', { class: 'alert low rate' },
     h('strong', {}, 'Is Extension Guardian useful to you?'),
-    h('p', {}, `A rating in ${FROM_EDGE_STORE ? 'Edge Add-ons' : 'the Chrome Web Store'} helps other people find it. It takes ten seconds.`),
+    h('p', {}, `A rating in ${FROM_EDGE_STORE ? 'Edge Add-ons' : STORE.the} helps other people find it. It takes ten seconds.`),
     h('div', { class: 'actions' },
       h('a', {
-        class: 'link', href: FROM_EDGE_STORE ? edgeStorePageUrl(chrome.runtime.id) : `${storePageUrl(chrome.runtime.id)}/reviews`, target: '_blank', onclick: () => answer('rated'),
+        class: 'link', href: FROM_EDGE_STORE ? edgeStorePageUrl(chrome.runtime.id) : reviewPageUrl(chrome.runtime.id), target: '_blank', onclick: () => answer('rated'),
       }, 'Rate it ↗'),
       h('button', { class: 'link muted', onclick: () => answer('dismissed') }, 'No thanks'),
     ),
@@ -160,15 +161,16 @@ function ratePrompt() {
 }
 
 function storeDetails(ext, store) {
-  if (!isFromChromeWebStore(ext)) {
+  if (!isFromStore(ext)) {
     const why = ext.installType === 'development' ? 'Loaded by you as an unpacked extension.'
       : ext.installType === 'admin' ? 'Installed by your organization.'
       : updateSource(ext) === 'edge' ? 'Installed from Microsoft Edge Add-ons. Developer checks only cover the Chrome Web Store for now.'
-      : 'Not installed from the Chrome Web Store, so we can\'t check its developer.';
+      : `Not installed from ${STORE.the}, so we can't check its developer.`;
     return h('p', { class: 'muted' }, why);
   }
   if (!store) return h('p', { class: 'muted' }, 'Not checked yet. Press "Check now".');
-  if (store.status === 'not_found') return h('p', { class: 'warn' }, 'This extension is no longer listed in the Chrome Web Store.');
+  if (store.status === 'unlisted') return h('p', { class: 'muted' }, `Not listed on ${STORE.the}, so we can't check its developer.`);
+  if (store.status === 'not_found') return h('p', { class: 'warn' }, `This extension is no longer listed in ${STORE.the}.`);
   const rows = [
     ['Developer', store.developerName ?? store.offeredBy],
     ['Email', store.email],
@@ -185,7 +187,7 @@ function riskReasons(ext, store, risk) {
   const items = risk.reasons.map((r) =>
     h('li', { class: r.kind }, h('strong', {}, r.title), h('span', {}, r.detail)));
   if (!items.length) {
-    const note = isFromChromeWebStore(ext) && !store
+    const note = isFromStore(ext) && !store
       ? 'No warning signs yet. The developer has not been checked, press "Check now".'
       : 'No warning signs found.';
     return h('p', { class: 'muted' }, note);
@@ -218,15 +220,17 @@ function extensionRow({ ext, store, risk }) {
       h('h3', {}, 'Who makes it'),
       storeDetails(ext, store),
       h('div', { class: 'actions' },
-        ext.mayDisable && h('button', {
+        // Firefox doesn't let one add-on turn off or remove another.
+        !IS_FIREFOX && ext.mayDisable && h('button', {
           class: 'secondary',
           onclick: async () => { await chrome.management.setEnabled(ext.id, !ext.enabled); refresh(); },
         }, ext.enabled ? 'Turn off' : 'Turn on'),
-        ext.mayDisable && h('button', {
+        !IS_FIREFOX && ext.mayDisable && h('button', {
           class: 'danger',
           onclick: async () => { try { await chrome.management.uninstall(ext.id, { showConfirmDialog: true }); } catch {} refresh(); },
         }, 'Remove'),
-        isFromChromeWebStore(ext) && h('a', { class: 'link', href: storePageUrl(ext.id), target: '_blank' }, 'View in store ↗'),
+        IS_FIREFOX && h('span', { class: 'muted' }, 'Turn off or remove it in about:addons.'),
+        isFromStore(ext) && h('a', { class: 'link', href: storePageUrl(ext.id), target: '_blank' }, 'View in store ↗'),
         ext.installType !== 'development' && updateSource(ext) === 'edge'
           && h('a', { class: 'link', href: edgeStorePageUrl(ext.id), target: '_blank' }, 'View in store ↗'),
       ),
@@ -249,7 +253,7 @@ function render() {
         : h('p', { class: 'muted empty' }, 'No other extensions installed. Nice and clean.'),
     ),
     h('footer', {},
-      data.storeError && h('p', { class: 'warn' }, 'Could not reach the Guardian server, so developer checks are paused.'),
+      data.storeError && h('p', { class: 'warn' }, `Could not reach ${IS_FIREFOX ? STORE.the : 'the Guardian server'}, so developer checks are paused.`),
       `Store last checked ${timeAgo(data.lastStoreCheckAt)} · Only extension IDs leave your device`),
   ).childNodes);
 }

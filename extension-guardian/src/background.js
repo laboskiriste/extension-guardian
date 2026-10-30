@@ -1,6 +1,7 @@
-import { assessRisk, isFromChromeWebStore } from './lib/risk.js';
+import { assessRisk, isFromStore } from './lib/risk.js';
 import { snapshotOf, diffSnapshots, diffStoreInfo } from './lib/changes.js';
 import { fetchStoreInfoBatch } from './lib/store.js';
+import { IS_FIREFOX } from './lib/platform.js';
 
 const STORE_CHECK_ALARM = 'store-check';
 const STORE_CHECK_MINUTES = 6 * 60;
@@ -96,10 +97,10 @@ async function scanInstalled({ baseline = false } = {}) {
   await addAlerts(fresh);
 }
 
-// Looks up each extension's Chrome Web Store page and compares the developer.
+// Looks up each extension's store page and compares the developer.
 async function checkStore(onlyIds = null) {
   const exts = (await installedExtensions())
-    .filter(isFromChromeWebStore)
+    .filter(isFromStore)
     .filter((e) => !onlyIds || onlyIds.includes(e.id));
 
   if (!exts.length) return;
@@ -121,8 +122,13 @@ async function checkStore(onlyIds = null) {
 
   const { storeInfo } = await load();
   const fresh = [];
-  for (const [ext, info] of results) {
+  for (let [ext, info] of results) {
     const prev = storeInfo[ext.id];
+    // Firefox add-ons installed from a file or another site were never on
+    // Firefox Add-ons. Only one we saw listed before counts as removed.
+    if (IS_FIREFOX && info.status === 'not_found' && prev?.status !== 'ok') {
+      info = { status: 'unlisted', checkedAt: info.checkedAt };
+    }
     if (parserSuspect && info.status === 'not_found') continue;
     const changes = diffStoreInfo(ext.name, prev, info);
     const owner = changes.find((c) => c.type === 'ownership_changed');

@@ -37,6 +37,10 @@ for every request. It does not record which IDs came from which person.</p>
 <p>The server runs on Cloudflare Workers. Like any website, Cloudflare receives your IP address when the extension connects, and processes it
 under the <a href="https://www.cloudflare.com/privacypolicy/">Cloudflare Privacy Policy</a> to operate and protect its network. We do not log or store IP addresses.</p>
 
+<h2>In Firefox</h2>
+<p>The Firefox version doesn't use our server. To check developers it asks Firefox Add-ons (addons.mozilla.org) directly for the public
+listing of each add-on you have installed, by its ID. Mozilla's own privacy policy covers those requests. Nothing is sent to us.</p>
+
 <h2>The website checker</h2>
 <p>The page at <a href="/">app.extensionguardian.workers.dev</a> checks one extension at a time. It receives only the store link or ID you
 paste in, looks up the same public store information, and keeps it for up to 6 hours in the same way. It uses no cookies and no analytics.</p>

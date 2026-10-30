@@ -1,8 +1,8 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { parseStorePage, fetchStoreInfoBatch } from '../src/lib/store.js';
-import { assessRisk, assessAccess, isFromChromeWebStore, parseUsers } from '../src/lib/risk.js';
+import { parseStorePage, fetchStoreInfoBatch, parseAmoAddon, fetchAmoInfoBatch } from '../src/lib/store.js';
+import { assessRisk, assessAccess, isFromStore, parseUsers } from '../src/lib/risk.js';
 import { snapshotOf, diffSnapshots, diffStoreInfo } from '../src/lib/changes.js';
 
 const fixture = (name) => readFileSync(new URL(`./fixtures/${name}.html`, import.meta.url), 'utf8');
@@ -59,6 +59,36 @@ test('fetchStoreInfoBatch splits large requests and drops server errors', async 
   await assert.rejects(fetchStoreInfoBatch(['a'], async () => ({ ok: false, status: 500 })), /500/);
 });
 
+test('parses a Firefox Add-ons listing', () => {
+  const addon = JSON.parse(readFileSync(new URL('./fixtures/amo-ublock.json', import.meta.url), 'utf8'));
+  const info = parseAmoAddon(addon);
+  assert.equal(info.status, 'ok');
+  assert.equal(info.title, 'uBlock Origin');
+  assert.equal(info.developerName, 'Raymond Hill');
+  assert.equal(info.website, 'github.com');
+  assert.match(info.users, /^\d{1,3}(,\d{3})+$/);
+  assert.match(info.updated, /^[A-Z][a-z]+ \d{1,2}, \d{4}$/);
+  assert.equal(parseAmoAddon({ ...addon, status: 'disabled' }).status, 'not_found');
+});
+
+test('fetchAmoInfoBatch treats 404 as not found and keeps going after one failure', async () => {
+  const fake = async (url) => {
+    if (url.includes('gone')) return { ok: false, status: 404 };
+    if (url.includes('flaky')) return { ok: false, status: 503 };
+    return { ok: true, status: 200, json: async () => ({ status: 'public', name: 'X', authors: [{ name: 'A' }] }) };
+  };
+  const out = await fetchAmoInfoBatch(['ok@x', 'gone@x', 'flaky@x'], fake);
+  assert.equal(out['ok@x'].developerName, 'A');
+  assert.equal(out['gone@x'].status, 'not_found');
+  assert.equal(out['flaky@x'], undefined);
+  await assert.rejects(fetchAmoInfoBatch(['flaky@x'], fake), /503/);
+});
+
+test('an unlisted Firefox add-on is worth watching, not high risk', () => {
+  const r = assessRisk(ext(FULL), { store: { status: 'unlisted' }, now: NOW });
+  assert.equal(r.level, 'watch');
+});
+
 const NOW = Date.parse('October 26, 2026');
 const store = (overrides = {}) => ({
   status: 'ok', developerName: 'Dev', email: 'dev@example.com', website: 'example.com',
@@ -103,13 +133,13 @@ test('critical signals are high risk even for popular extensions', () => {
   const r = assessRisk(sideloaded);
   assert.equal(r.level, 'high');
   assert.equal(r.reasons.length, 2);
-  assert.equal(isFromChromeWebStore(sideloaded), false);
+  assert.equal(isFromStore(sideloaded), false);
 });
 
 test('a store extension added by Chrome itself is not high risk', () => {
   // Google Docs Offline: installed by Chrome, updates from the store, no user count shown.
   const docs = ext({ installType: 'sideload', hostPermissions: ['https://docs.google.com/*'] });
-  assert.equal(isFromChromeWebStore(docs), true);
+  assert.equal(isFromStore(docs), true);
   assert.equal(assessRisk(docs).level, 'high', 'before the store has been checked');
   const google = store({ developerName: 'Google Ireland, Ltd.', trader: 'trader', users: null, updated: 'October 19, 2026' });
   const r = assessRisk(docs, { store: google, now: NOW });
