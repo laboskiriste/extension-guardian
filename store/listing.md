@@ -56,8 +56,8 @@ PRIVATE BY DESIGN
 **Category**: Privacy & Security
 **Language**: English
 
-**Graphics** (in `store-listing/`):
-- Store icon: `extension-guardian/icons/icon128.png`
+**Graphics** (in `store/`):
+- Store icon: `extension/icons/icon128.png`
 - Screenshots (1280×800): `screenshot-1.png`, `screenshot-2.png`, `screenshot-3.png`
 - Small promo tile (440×280): `promo-small.png`
 

@@ -10,7 +10,7 @@ A Chrome extension that watches your other extensions and warns you when one bec
 - **Removed from the store**: Google often takes down malware this way.
 - **Sideloaded extensions**, and extensions that update from outside the store.
 
-Risk scoring and change detection run locally. Chrome does not let extensions read Chrome Web Store pages, so developer information comes from a small server, `../guardian-server`. The extension sends it only the IDs of installed extensions, nothing about the user.
+Risk scoring and change detection run locally. Chrome does not let extensions read Chrome Web Store pages, so developer information comes from a small server, `../server`. The extension sends it only the IDs of installed extensions, nothing about the user.
 
 ## Try it
 
@@ -18,7 +18,7 @@ Risk scoring and change detection run locally. Chrome does not let extensions re
 2. Click **Load unpacked** and pick this `extension-guardian` folder.
 3. Click the shield icon in the toolbar.
 
-The extension uses the deployed server at `https://app.extensionguardian.workers.dev` (Cloudflare Workers, results cached in Workers KV for 6 hours). The server allows any origin (CORS), so the manifest needs no host permission for it and Chrome shows no warning about it at install. To change the server, run `npm run deploy` in `guardian-server`, then update `src/config.js`. To work against a local server instead, run `npm start` in `guardian-server` and use `http://localhost:8787` there.
+The extension uses the deployed server at `https://app.extensionguardian.workers.dev` (Cloudflare Workers, results cached in Workers KV for 6 hours). The server allows any origin (CORS), so the manifest needs no host permission for it and Chrome shows no warning about it at install. To change the server, run `npm run deploy` in `../server`, then update `src/config.js`. To work against a local server instead, run `npm start` in `../server` and use `http://localhost:8787` there.
 
 The first run records how things look now and checks the store in the background. After that it checks the store every 6 hours, and checks right away whenever an extension is installed or updated.
 
@@ -38,7 +38,7 @@ npm test
 | `src/lib/changes.js` | Detects new permissions, owner changes and store removal |
 | `src/lib/store.js` | Parses Chrome Web Store pages (used by the server) and asks the server for results |
 | `src/config.js` | Server URL |
-| `../guardian-server/` | Server that reads the store: Cloudflare Worker, plus a Node dev server |
+| `../server/` | Server that reads the store: Cloudflare Worker, plus a Node dev server |
 | `src/popup/` | Popup UI (also opens in a tab) |
 
 The Chrome Web Store has no API, so `store.js` parses the page HTML. If Google changes the layout, the parser can break. In that case the background script stops reporting removals instead of flagging every extension, and the tests in `tests/fixtures` show the HTML it expects.

@@ -2,6 +2,6 @@ node_modules/
 .wrangler/
 .claude/
 marketing/
-store-listing/*.zip
+store/*.zip
 .dev.vars
-extension-guardian/build/
+extension/build/

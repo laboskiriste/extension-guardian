@@ -9,7 +9,7 @@ Get warned when a Chrome extension you use is sold, gains new permissions, or di
 
 Not ready to install anything? **[Check a single extension on the web](https://app.extensionguardian.workers.dev)**: paste its store link to see who makes it, how many people use it, and whether it's maintained.
 
-![Extension Guardian popup](store-listing/screenshot-1.png)
+![Extension Guardian popup](store/screenshot-1.png)
 
 ## Why
 
@@ -35,18 +35,18 @@ Your list of extensions and every result stay on your device. Chrome doesn't let
 
 | Folder | What it is |
 | --- | --- |
-| [`extension-guardian/`](extension-guardian) | The Chrome extension (Manifest V3, no build step). See its [README](extension-guardian/README.md). |
-| [`guardian-server/`](guardian-server) | Cloudflare Worker that reads Chrome Web Store pages for the extension and serves the [web checker](https://app.extensionguardian.workers.dev), plus a Node dev server |
-| [`store-listing/`](store-listing) | Store listing text and screenshots |
+| [`extension/`](extension) | The browser extension for Chrome and Firefox (Manifest V3, no build step). See its [README](extension/README.md). |
+| [`server/`](server) | Cloudflare Worker that reads Chrome Web Store pages for the extension and serves the [web checker](https://app.extensionguardian.workers.dev), plus a Node dev server |
+| [`store/`](store) | Store listing text and screenshots |
 
 ## Run it locally
 
 ```bash
-cd guardian-server && npm install && npm start      # server on http://localhost:8787
-cd extension-guardian && npm test                   # extension tests
+cd server && npm install && npm start      # server on http://localhost:8787
+cd extension && npm test                 # extension tests
 ```
 
-Point `extension-guardian/src/config.js` at `http://localhost:8787`, open `chrome://extensions`, turn on Developer mode, and load the `extension-guardian` folder with **Load unpacked**.
+Point `extension/src/config.js` at `http://localhost:8787`, open `chrome://extensions`, turn on Developer mode, and load the `extension` folder with **Load unpacked**.
 
 ## Feedback
 

@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
-# Renders the Chrome Web Store screenshots and promo tile into ../store-listing/.
+# Renders the Chrome Web Store screenshots and promo tile into ../store/.
 # FIREFOX=1 renders firefox-screenshot-*.png for Firefox Add-ons instead.
 # Needs Google Chrome and Python 3.
 set -euo pipefail
 cd "$(dirname "$0")/.."
-OUT="$(cd .. && pwd)/store-listing"
+OUT="$(cd .. && pwd)/store"
 PORT=8799
 mkdir -p "$OUT"
 

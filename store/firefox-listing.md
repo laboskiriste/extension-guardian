@@ -1,11 +1,11 @@
 # Firefox Add-ons listing – Extension Guardian
 
-Package: `store-listing/extension-guardian-0.1.2-firefox.zip` (rebuild with `npm run package:firefox` in `extension-guardian`).
+Package: `store/extension-guardian-0.1.2-firefox.zip` (rebuild with `npm run package:firefox` in `extension`).
 
 ## Try it first (1 minute)
 
 1. In Firefox, open `about:debugging#/runtime/this-firefox`.
-2. Click **Load Temporary Add-on…** and pick `extension-guardian/build/firefox/manifest.json`.
+2. Click **Load Temporary Add-on…** and pick `extension/build/firefox/manifest.json`.
 3. Click the toolbar icon, then **Check now**. Your add-ons should show who makes them; one you installed from a file says "Not listed on Firefox Add-ons".
 
 The temporary add-on goes away when Firefox restarts.

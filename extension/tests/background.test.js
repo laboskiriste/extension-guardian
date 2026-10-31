@@ -1,7 +1,7 @@
 // Runs the real service worker against a fake `chrome` API.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { handleRequest } from '../../guardian-server/src/handler.js';
+import { handleRequest } from '../../server/src/handler.js';
 
 const listeners = {};
 const on = (name) => ({ addListener: (fn) => { listeners[name] = fn; } });

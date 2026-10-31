@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { handleRequest } from '../src/handler.js';
 
-const fixture = (name) => readFileSync(new URL(`../../extension-guardian/tests/fixtures/${name}.html`, import.meta.url), 'utf8');
+const fixture = (name) => readFileSync(new URL(`../../extension/tests/fixtures/${name}.html`, import.meta.url), 'utf8');
 const DARK = 'eimadpbcbfnmbkopoojfekhnkhdbieeh';
 const GONE = 'cjpalhdlnbpafiamejdnhcphjbkeiagm';
 const MISSING = 'p'.repeat(32);

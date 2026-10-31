@@ -70,9 +70,9 @@ PRIVATE BY DESIGN
 • Open source: https://github.com/laboskiriste/extension-guardian
 ```
 
-**Extension store logo** (128×128 minimum): `extension-guardian/icons/icon128.png`
+**Extension store logo** (128×128 minimum): `extension/icons/icon128.png`
 
-**Small promotional tile** (440×280): `store-listing/promo-small.png`
+**Small promotional tile** (440×280): `store/promo-small.png`
 
 **Screenshots** (1280×800): `screenshot-1.png`, `screenshot-2.png`, `screenshot-3.png`
 

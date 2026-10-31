@@ -4,7 +4,7 @@
 // match on the visible labels only (requested with ?hl=en).
 //
 // Chrome does not let extensions load store pages, so the parsing runs on our
-// server (guardian-server), and the extension asks the server for results.
+// server (../server), and the extension asks the server for results.
 
 import { API_BASE } from '../config.js';
 import { IS_FIREFOX } from './platform.js';

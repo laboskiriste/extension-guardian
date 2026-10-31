@@ -26,7 +26,7 @@ cpSync(`${root}icons`, `${out}icons`, { recursive: true });
 cpSync(`${root}src`, `${out}src`, { recursive: true });
 writeFileSync(`${out}manifest.json`, `${JSON.stringify(manifest, null, 2)}\n`);
 
-const zip = `${root}../store-listing/extension-guardian-${manifest.version}-firefox.zip`;
+const zip = `${root}../store/extension-guardian-${manifest.version}-firefox.zip`;
 rmSync(zip, { force: true });
 execFileSync('zip', ['-qr', zip, 'manifest.json', 'icons', 'src'], { cwd: out });
 console.log(zip);

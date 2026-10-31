@@ -2,7 +2,7 @@
 // Chrome blocks extensions from reading the store, so this runs on a server.
 // Only public store data passes through here: the request carries extension
 // IDs and nothing about the user.
-import { parseStorePage } from '../../extension-guardian/src/lib/store.js';
+import { parseStorePage } from '../../extension/src/lib/store.js';
 import { PRIVACY_HTML } from './privacy.js';
 import {
   extractId, extensionPath, renderCheckPage, renderIncidentPage, renderPopularPage, renderReportPage, renderSitemap, REPORT_PATH, OG_DEFAULT_PATH, OG_REPORT_PATH, ROBOTS,
