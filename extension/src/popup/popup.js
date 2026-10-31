@@ -3,6 +3,7 @@ import { edgeStorePageUrl, reviewPageUrl, searchPageUrl, storePageUrl } from '..
 import { IS_FIREFOX, STORE } from '../lib/platform.js';
 import { normalizeSite } from '../lib/sites.js';
 import { replacementFor } from '../lib/replacements.js';
+import { ACCESS_LABEL, RISK_LABEL, listAsText } from '../lib/report.js';
 import '../lib/family.js';
 
 const app = document.getElementById('app');
@@ -11,8 +12,16 @@ if (inTab) document.body.classList.add('tab');
 
 const expanded = new Set();
 // What the user is typing in each "Keep off on these sites" box, so a
-// re-render doesn't wipe it.
+// re-render doesn't wipe it, and why the last site they added was refused.
 const siteDrafts = {};
+const siteErrors = {};
+// The name filter, shown once the list is long.
+const FILTER_FROM = 8;
+let filter = '';
+// "Copied" or "Couldn't copy" next to the copy button, for a moment.
+let copyNote = null;
+// The control to focus once it is enabled again; see render().
+let pendingFocus = null;
 let busy = false;
 let data = { exts: [], storeInfo: {}, alerts: [], lastStoreCheckAt: null, storeError: null };
 
@@ -43,10 +52,10 @@ function timeAgo(ms) {
   return `${Math.round(hours / 24)} d ago`;
 }
 
-const RISK_LABEL = { high: 'High risk', watch: 'Watch', low: 'Low risk' };
-const ACCESS_LABEL = { full: 'Full access', limited: 'Limited access', basic: 'Basic access' };
 const RECENT_MS = 30 * 24 * 60 * 60 * 1000;
 
+// Reads installed extensions and stored results, and rates each extension.
+// Sorted with turned-on and riskier extensions first.
 async function load() {
   const [all, stored] = await Promise.all([
     chrome.management.getAll(),
@@ -108,10 +117,10 @@ function header() {
     ),
     h('div', { class: 'header-actions' },
       !inTab && h('button', {
-        class: 'ghost', title: 'Open in a tab',
+        class: 'ghost', title: 'Open in a tab', 'aria-label': 'Open in a tab',
         onclick: () => chrome.tabs.create({ url: chrome.runtime.getURL('src/popup/popup.html?view=tab') }),
       }, '⤢'),
-      h('button', { class: 'primary', disabled: busy, onclick: checkNow }, busy ? 'Checking…' : 'Check now'),
+      h('button', { class: 'primary', 'data-key': 'check', disabled: busy, onclick: checkNow }, busy ? 'Checking…' : 'Check now'),
     ),
   );
 }
@@ -137,7 +146,7 @@ function alertCard(alert) {
     h('button', { class: 'link muted', onclick: async () => { await send('dismiss', { id: alert.id }); refresh(); } }, 'Dismiss'),
   ];
   return h('article', { class: `alert ${alert.severity}` },
-    h('div', { class: 'alert-head' }, h('strong', {}, alert.title), h('time', {}, timeAgo(alert.at))),
+    h('div', { class: 'alert-head' }, h('strong', {}, alert.title), h('time', { datetime: new Date(alert.at).toISOString() }, timeAgo(alert.at))),
     h('p', {}, alert.detail),
     h('div', { class: 'actions' }, actions),
   );
@@ -231,25 +240,40 @@ function askForTabs() {
   return chrome.permissions.request({ permissions: ['tabs'] }).catch(() => false);
 }
 
+// The "Keep off on these sites" box in an extension's details. The
+// background script does the turning off and on; this only edits the list.
 function keepOffSites(ext) {
   const sites = data.siteRules[ext.id] ?? [];
   const save = (next) => send('setSites', { extId: ext.id, sites: next });
   const add = async (event) => {
     event.preventDefault();
-    const site = normalizeSite(siteDrafts[ext.id]);
-    if (!site) return;
+    const typed = (siteDrafts[ext.id] ?? '').trim();
+    const site = normalizeSite(typed);
+    if (!site || sites.includes(site)) {
+      if (typed) {
+        siteErrors[ext.id] = site ? `${site} is already on the list.` : `"${typed}" doesn't look like a site. Try something like mybank.com.`;
+      }
+      render();
+      return;
+    }
     const granted = askForTabs();
     delete siteDrafts[ext.id];
-    if (!sites.includes(site)) await save([...sites, site]);
+    delete siteErrors[ext.id];
+    await save([...sites, site]);
     await granted;
     refresh();
   };
+  const error = siteErrors[ext.id];
   return h('div', { class: 'sites' },
     h('h3', {}, 'Keep off on these sites'),
     h('p', { class: 'muted' }, `Guardian turns ${ext.name} off while one of these sites is in the active tab, and back on when you leave. Reload a page that was already open. The address of the active tab never leaves your device.`),
     sites.length > 0 && h('ul', { class: 'chips' }, sites.map((site) => h('li', {},
       site,
-      h('button', { class: 'chip-x', title: `Remove ${site}`, 'aria-label': `Remove ${site}`, onclick: async () => { await save(sites.filter((s) => s !== site)); refresh(); } }, '×'),
+      h('button', {
+        class: 'chip-x', title: `Remove ${site}`, 'aria-label': `Remove ${site}`,
+        // Focus moves to the input once the chip is gone.
+        onclick: async () => { await save(sites.filter((s) => s !== site)); app.querySelector(`[data-key="site-${ext.id}"]`)?.focus(); refresh(); },
+      }, '×'),
     ))),
     sites.length > 0 && !data.hasTabs && h('p', { class: 'warn' },
       'Not active yet: Guardian needs to see the address of the active tab. ',
@@ -258,27 +282,40 @@ function keepOffSites(ext) {
     h('form', { class: 'site-form', onsubmit: add },
       h('input', {
         type: 'text', placeholder: 'mybank.com', 'aria-label': 'Site to keep it off on', value: siteDrafts[ext.id] ?? '',
-        oninput: (e) => { siteDrafts[ext.id] = e.target.value; },
+        'data-key': `site-${ext.id}`, 'aria-invalid': error ? 'true' : null, 'aria-describedby': error ? `site-error-${ext.id}` : null,
+        oninput: (e) => {
+          siteDrafts[ext.id] = e.target.value;
+          // Clear the message without a re-render, so typing isn't interrupted.
+          if (siteErrors[ext.id]) {
+            delete siteErrors[ext.id];
+            e.target.removeAttribute('aria-invalid');
+            document.getElementById(`site-error-${ext.id}`)?.remove();
+          }
+        },
       }),
       h('button', { class: 'secondary', type: 'submit' }, 'Add'),
     ),
+    error && h('p', { class: 'warn', id: `site-error-${ext.id}`, role: 'alert' }, error),
   );
 }
 
+// One extension in the list: a header button, and the details when open.
 function extensionRow({ ext, store, risk }) {
   const open = expanded.has(ext.id);
   const toggle = () => { open ? expanded.delete(ext.id) : expanded.add(ext.id); render(); };
   return h('li', { id: `ext-${ext.id}`, class: `ext ${ext.enabled ? '' : 'disabled'} ${open ? 'open' : ''}` },
-    h('button', { class: 'ext-head', onclick: toggle, 'aria-expanded': String(open) },
+    h('button', {
+      class: 'ext-head', onclick: toggle, 'aria-expanded': String(open), 'aria-controls': open ? `body-${ext.id}` : null, 'data-key': `head-${ext.id}`,
+    },
       iconFor(ext),
       h('div', { class: 'ext-name' },
         h('strong', {}, ext.name),
         h('span', {}, `v${ext.version} · ${ACCESS_LABEL[risk.access.level]}${
-          data.pausedBySites.includes(ext.id) ? ' · off on this site' : ext.enabled ? '' : ' · turned off'}`),
+          !ext.enabled && data.pausedBySites.includes(ext.id) ? ' · off on this site' : ext.enabled ? '' : ' · turned off'}`),
       ),
       h('span', { class: `pill ${risk.level}` }, RISK_LABEL[risk.level]),
     ),
-    open && h('div', { class: 'ext-body' },
+    open && h('div', { class: 'ext-body', id: `body-${ext.id}` },
       store?.ownershipChanged && h('p', { class: 'warn' },
         `Developer changed from "${store.ownershipChanged.from}" to "${store.ownershipChanged.to}".`),
       h('h3', {}, 'Why this risk level'),
@@ -294,11 +331,11 @@ function extensionRow({ ext, store, risk }) {
       h('div', { class: 'actions' },
         // Firefox doesn't let one add-on turn off or remove another.
         !IS_FIREFOX && ext.mayDisable && h('button', {
-          class: 'secondary',
+          class: 'secondary', 'data-key': `toggle-${ext.id}`, 'aria-label': `${ext.enabled ? 'Turn off' : 'Turn on'} ${ext.name}`,
           onclick: async () => { await chrome.management.setEnabled(ext.id, !ext.enabled); refresh(); },
         }, ext.enabled ? 'Turn off' : 'Turn on'),
         !IS_FIREFOX && ext.mayDisable && h('button', {
-          class: 'danger',
+          class: 'danger', 'aria-label': `Remove ${ext.name}`,
           onclick: async () => { try { await chrome.management.uninstall(ext.id, { showConfirmDialog: true }); } catch {} refresh(); },
         }, 'Remove'),
         IS_FIREFOX && h('span', { class: 'muted' }, 'Turn off or remove it in about:addons.'),
@@ -322,25 +359,89 @@ function moreFromFamily() {
     }, e.name.split(':')[0])]));
 }
 
+// Shown when the last store check failed. Everything except the developer
+// checks runs on the device and keeps working.
+function offlineNotice() {
+  const where = IS_FIREFOX ? STORE.the : 'the Guardian server';
+  return h('article', { class: 'alert medium', role: 'status' },
+    h('strong', {}, navigator.onLine === false ? 'You seem to be offline' : `Can't reach ${where}`),
+    h('p', {}, `Developer and store checks are paused until ${where} answers. Permission checks still work.${
+      data.lastStoreCheckAt ? ` Last successful check: ${timeAgo(data.lastStoreCheckAt)}.` : ''}`),
+    h('div', { class: 'actions' }, h('button', { class: 'link', 'data-key': 'retry', disabled: busy, onclick: checkNow }, 'Try again')),
+  );
+}
+
+function extensionList() {
+  if (!data.exts.length) return h('p', { class: 'muted empty' }, 'No other extensions installed. Nice and clean.');
+  const words = filter.trim().toLowerCase();
+  const shown = words ? data.exts.filter((x) => x.ext.name.toLowerCase().includes(words)) : data.exts;
+  return [
+    data.exts.length >= FILTER_FROM && h('input', {
+      type: 'search', class: 'filter', placeholder: 'Find an extension', 'aria-label': 'Find an extension by name',
+      'data-key': 'filter', value: filter,
+      oninput: (e) => { filter = e.target.value; render(); },
+    }),
+    shown.length
+      ? h('ul', { class: 'list' }, shown.map(extensionRow))
+      : h('p', { class: 'muted empty' }, `No extension matches "${filter.trim()}".`),
+  ];
+}
+
+// Copies the list as plain text. Nothing is sent anywhere.
+async function copyList() {
+  const text = listAsText(data.exts);
+  try {
+    await navigator.clipboard.writeText(text);
+    copyNote = 'Copied';
+  } catch {
+    // Some browsers refuse the clipboard API here; the old way still works.
+    const area = h('textarea', { readonly: true, class: 'offscreen' }, text);
+    document.body.append(area);
+    area.select();
+    copyNote = document.execCommand('copy') ? 'Copied' : 'Couldn\'t copy';
+    area.remove();
+  }
+  render();
+  setTimeout(() => { copyNote = null; render(); }, 2000);
+}
+
 function render() {
+  // Every render replaces all nodes, so put focus (and the caret) back on
+  // the same control afterwards. Without this, keyboard users lose their
+  // place on every click and every background update.
+  const active = document.activeElement;
+  const focusKey = active?.dataset?.key ?? pendingFocus;
+  pendingFocus = null;
+  const caret = typeof active?.selectionStart === 'number' ? active.selectionStart : null;
+
   const unseenFirst = [...data.alerts].sort((a, b) => b.at - a.at);
   // Goes through h() so a missing section is skipped instead of printed as "false".
   app.replaceChildren(...h('div', {},
     header(),
     summary(),
+    data.storeError && offlineNotice(),
     unseenFirst.length > 0 && h('section', { class: 'alerts' }, h('h2', {}, 'Alerts'), unseenFirst.map(alertCard)),
     showRatePrompt() && ratePrompt(),
     h('section', {},
       h('h2', {}, 'Your extensions'),
-      data.exts.length
-        ? h('ul', { class: 'list' }, data.exts.map(extensionRow))
-        : h('p', { class: 'muted empty' }, 'No other extensions installed. Nice and clean.'),
+      extensionList(),
     ),
     h('footer', {},
-      data.storeError && h('p', { class: 'warn' }, `Could not reach ${IS_FIREFOX ? STORE.the : 'the Guardian server'}, so developer checks are paused.`),
       `Store last checked ${timeAgo(data.lastStoreCheckAt)} · Only extension IDs leave your device`,
+      data.exts.length > 0 && h('p', { class: 'export' },
+        h('button', { class: 'link', 'data-key': 'copy', onclick: copyList }, 'Copy the list as text'),
+        copyNote && h('span', { role: 'status' }, ` · ${copyNote}`)),
       moreFromFamily()),
   ).childNodes);
+
+  const target = focusKey && app.querySelector(`[data-key="${CSS.escape(focusKey)}"]`);
+  // A disabled button ("Checking…") can't take focus: try again next render.
+  if (target?.disabled) {
+    pendingFocus = focusKey;
+  } else if (target) {
+    target.focus();
+    if (caret != null) target.setSelectionRange?.(caret, caret);
+  }
 }
 
 chrome.storage.onChanged.addListener(() => { if (!busy) refresh(); });

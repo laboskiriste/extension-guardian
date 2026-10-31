@@ -4,6 +4,9 @@ const { family, extensions } = globalThis.TINYWARD;
 const others = extensions.filter((e) => e.id !== 'extension-guardian');
 const firefox = typeof browser !== 'undefined' && typeof browser.runtime?.getBrowserInfo === 'function';
 
+// Firefox doesn't let one add-on turn another off.
+if (firefox) document.getElementById('keep-off').hidden = true;
+
 if (others.length) {
   document.getElementById('family-name').textContent = family;
   document.getElementById('family-list').replaceChildren(...others.map((e) => {

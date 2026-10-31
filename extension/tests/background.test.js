@@ -12,6 +12,7 @@ let storePages = {};
 let badge = '';
 const tabs = [];
 let activeUrl = null;
+let lastQuery = null;
 let hasTabs = false;
 
 globalThis.chrome = {
@@ -35,7 +36,8 @@ globalThis.chrome = {
   notifications: { create: (id, opts) => notifications.push(opts), onClicked: on('notifClick'), clear: () => {} },
   tabs: {
     create: ({ url }) => tabs.push(url),
-    query: async () => (activeUrl ? [{ url: activeUrl, active: true }] : []),
+    // activeUrl '' is a focused window whose tab has no address, like devtools.
+    query: async (q) => { lastQuery = q; return activeUrl == null ? [] : [{ url: activeUrl || undefined, active: true }]; },
     onActivated: on('tabActivated'),
     onUpdated: on('tabUpdated'),
   },
@@ -48,7 +50,11 @@ const fakeStore = async (url) => {
   const html = storePages[id];
   return html ? new Response(html) : new Response('', { status: 404 });
 };
-globalThis.fetch = (url) => handleRequest(new Request(url), { fetchImpl: fakeStore });
+const serverCalls = [];
+globalThis.fetch = (url) => {
+  serverCalls.push(url);
+  return handleRequest(new Request(url), { fetchImpl: fakeStore });
+};
 
 await import('../src/background.js');
 
@@ -164,4 +170,150 @@ test('removing the last site turns the extension back on', async () => {
   await send({ type: 'setSites', extId: A, sites: [] });
   assert.equal(installed[0].enabled, true);
   assert.equal(storage.siteRules[A], undefined);
+});
+
+// Waits for everything queued before it.
+const settle = () => send({ type: 'markSeen' });
+
+test('turning an extension back on by hand on the site keeps it on until leaving', async () => {
+  installed = [ext(A, { mayDisable: true })];
+  hasTabs = true;
+  activeUrl = 'https://mybank.com/';
+  await send({ type: 'setSites', extId: A, sites: ['mybank.com'] });
+  assert.equal(installed[0].enabled, false);
+
+  installed[0].enabled = true; // by hand, from the popup or chrome://extensions
+  activeUrl = 'https://mybank.com/accounts';
+  listeners.tabUpdated(1, { url: activeUrl }, { active: true });
+  await settle();
+  assert.equal(installed[0].enabled, true, 'not turned off again on the same site');
+  assert.deepEqual(storage.allowedBySites, [A]);
+  assert.deepEqual(storage.pausedBySites, []);
+
+  activeUrl = 'https://example.com/';
+  listeners.tabActivated({ tabId: 2 });
+  await settle();
+  assert.equal(installed[0].enabled, true);
+  assert.deepEqual(storage.allowedBySites, []);
+
+  activeUrl = 'https://mybank.com/';
+  listeners.tabActivated({ tabId: 1 });
+  await settle();
+  assert.equal(installed[0].enabled, false, 'off again on the next visit');
+});
+
+test('focus leaving the browser or moving to another window', async () => {
+  // A is off: mybank.com is the active tab of the focused window.
+  assert.equal(installed[0].enabled, false);
+  listeners.focus(-1); // chrome.windows.WINDOW_ID_NONE: another app has focus
+  await settle();
+  assert.equal(installed[0].enabled, false, 'the last focused window still shows the site');
+  assert.deepEqual(lastQuery, { active: true, lastFocusedWindow: true });
+
+  activeUrl = ''; // a devtools window: no address to check
+  listeners.focus(3);
+  await settle();
+  assert.equal(installed[0].enabled, false);
+
+  activeUrl = 'https://example.com/'; // another window, on another site
+  listeners.focus(2);
+  await settle();
+  assert.equal(installed[0].enabled, true);
+});
+
+test('uninstalling an extension while it is paused forgets it', async () => {
+  activeUrl = 'https://mybank.com/';
+  listeners.tabActivated({ tabId: 1 });
+  await settle();
+  assert.deepEqual(storage.pausedBySites, [A]);
+  installed = [];
+  listeners.extUninstalled(A);
+  await settle();
+  assert.deepEqual(storage.pausedBySites, []);
+  assert.equal(storage.siteRules[A], undefined);
+  activeUrl = 'https://example.com/';
+  listeners.tabActivated({ tabId: 2 });
+  await settle(); // nothing left to turn back on, and no error
+  assert.deepEqual(storage.pausedBySites, []);
+});
+
+const pageWithContact =(dev, site, email) => `<title>X - Chrome Web Store</title><li><div class="a">Developer</div><div><div class="b">${dev}<br>Street 1</div><a href="https://${site}/">Website</a><details>${email}</details></div></li>`;
+const clearStorage = () => { for (const key of Object.keys(storage)) delete storage[key]; };
+
+test('two alerts made at once get different ids', async () => {
+  installed = [ext(A)];
+  storePages = { [A]: pageWithContact('Alice', 'alice.dev', 'a@alice.dev') };
+  await send({ type: 'scan' });
+  storePages = { [A]: pageWithContact('Alice', 'other.example', 'x@other.example') };
+  await send({ type: 'scan' });
+  const contact = storage.alerts.filter((a) => a.extId === A && a.type === 'contact_changed');
+  assert.equal(contact.length, 2);
+  assert.notEqual(contact[0].id, contact[1].id);
+  await send({ type: 'dismiss', id: contact[0].id });
+  assert.ok(storage.alerts.some((a) => a.id === contact[1].id), 'dismissing one keeps the other');
+});
+
+test('a scan before any baseline only records one', async () => {
+  clearStorage();
+  const sideloaded = ext(B, { installType: 'sideload', updateUrl: 'https://evil.example/update.xml' });
+  installed = [sideloaded];
+  await send({ type: 'scan' });
+  assert.deepEqual(storage.alerts ?? [], [], 'no "new extension" alerts for what was already there');
+  installed = [sideloaded, ext(C, { installType: 'sideload', updateUrl: 'https://evil.example/update.xml' })];
+  await send({ type: 'scan' });
+  assert.deepEqual(storage.alerts.map((a) => [a.extId, a.type]), [[C, 'installed']]);
+});
+
+test('a store page that flickers does not repeat the alert', async () => {
+  clearStorage();
+  installed = [ext(A), ext(B), ext(C)];
+  storePages = { [A]: page('Alice'), [B]: page('Bob'), [C]: page('Carol') };
+  await send({ type: 'scan' });
+  const before = notifications.length;
+  for (const present of [false, true, false, true, false]) {
+    if (present) storePages[A] = page('Alice');
+    else delete storePages[A];
+    await send({ type: 'scan' });
+  }
+  assert.equal(storage.alerts.filter((a) => a.type === 'removed_from_store').length, 1);
+  assert.equal(notifications.length, before + 1, 'one notification');
+});
+
+test('a burst of updates makes one scan and one server call', async () => {
+  installed = [ext(A), ext(B), ext(C)];
+  storePages = { [A]: page('Alice'), [B]: page('Bob'), [C]: page('Carol') };
+  await settle();
+  serverCalls.length = 0;
+  for (const e of installed) listeners.extInstalled(e);
+  await settle();
+  assert.equal(serverCalls.length, 1);
+  assert.match(serverCalls[0], new RegExp(`ids=${A},${B},${C}$`));
+
+  serverCalls.length = 0;
+  const scans = [send({ type: 'scan' }), send({ type: 'scan' })];
+  listeners.alarm({ name: 'store-check' });
+  await Promise.all(scans);
+  assert.equal(serverCalls.length, 1, 'two "Check now" and the alarm share one call');
+});
+
+test('data about extensions uninstalled while Guardian was off is cleaned up', async () => {
+  await send({ type: 'setSites', extId: B, sites: ['mybank.com'] });
+  assert.ok(storage.alerts.some((a) => a.extId === A));
+  installed = [ext(C)];
+  listeners.startup();
+  await settle();
+  assert.deepEqual(Object.keys(storage.storeInfo), [C]);
+  assert.deepEqual(Object.keys(storage.snapshots), [C]);
+  assert.deepEqual(storage.siteRules, {});
+  assert.deepEqual(storage.alerts, []);
+  assert.equal(badge, '');
+});
+
+test('the first-run scan runs before a scan sent right after install', async () => {
+  clearStorage();
+  installed = [ext(D, { installType: 'sideload', updateUrl: 'https://evil.example/update.xml' })];
+  listeners.installed({ reason: 'install' });
+  await send({ type: 'scan' });
+  assert.deepEqual(storage.alerts ?? [], []);
+  assert.ok(storage.installedAt);
 });

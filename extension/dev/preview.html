@@ -5,7 +5,8 @@
   <title>Extension Guardian – preview</title>
   <link rel="stylesheet" href="../src/popup/popup.css">
   <style>html:not(.frame) { background: #888; } html:not(.frame) body { margin: 20px auto; box-shadow: 0 4px 24px #0004; }</style>
-  <!-- ?frame: no page chrome, for store screenshots. ?open=<id>: expand that extension. -->
+  <!-- ?frame: no page chrome, for store screenshots. ?open=<id>: expand that extension.
+       More states: ?firefox ?edge ?rate ?tabs ?offline ?empty ?many (can be combined). -->
   <script>if (new URLSearchParams(location.search).has('frame')) document.documentElement.classList.add('frame');</script>
 </head>
 <body>
@@ -68,7 +69,22 @@
       store.alerts[2].title = 'Old Screenshot Tool was removed from Firefox Add-ons';
       store.alerts[2].detail = 'Mozilla removes extensions for malware and policy violations. Consider removing it until you know why.';
     }
-    const changed = [];
+    const params = new URLSearchParams(location.search);
+    // ?offline: the last store check failed.
+    if (params.has('offline')) store.storeError = 'Failed to fetch';
+    // ?empty: no other extensions installed.
+    if (params.has('empty')) {
+      exts = [];
+      store.alerts = [];
+    }
+    // ?many: 30 more extensions, to try the name filter.
+    if (params.has('many')) {
+      const names = ['Tab Saver', 'Color Picker', 'JSON Viewer', 'Price Tracker', 'Read Aloud', 'Word Counter'];
+      for (let i = 0; i < 30; i++) {
+        exts.push({ id: `m${String(i).padStart(3, '0')}`, name: `${names[i % names.length]} ${i + 1}`, version: '1.0', enabled: i % 7 !== 0, mayDisable: true,
+          type: 'extension', installType: 'normal', updateUrl: cws, permissions: i % 3 ? ['storage'] : ['tabs', 'scripting'], hostPermissions: i % 4 ? [] : ['<all_urls>'] });
+      }
+    }
     // ?rate shows the rating prompt: installed over a week ago, no serious alerts open.
     if (new URLSearchParams(location.search).has('rate')) {
       store.installedAt = Date.now() - 8 * 24 * 60 * 60 * 1000;

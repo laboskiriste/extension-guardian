@@ -16,19 +16,24 @@ function serial(task) {
   return run;
 }
 
+// What the checks keep between runs. Site rules and the rest are read where needed.
 function load() {
   return chrome.storage.local.get({ snapshots: {}, storeInfo: {}, alerts: [] });
 }
 
+// Every other extension. Themes and apps are left out.
 async function installedExtensions() {
   const all = await chrome.management.getAll();
   return all.filter((e) => e.type === 'extension' && e.id !== chrome.runtime.id);
 }
 
+// Two alerts of the same type can be made in the same millisecond (a new
+// email and a new website), so ids also carry a counter.
+let alertCount = 0;
 function makeAlert(ext, change) {
   return {
     ...change,
-    id: `${ext.id}:${change.type}:${Date.now()}`,
+    id: `${ext.id}:${change.type}:${Date.now()}:${alertCount++}`,
     extId: ext.id,
     extName: ext.name,
     at: Date.now(),
@@ -36,6 +41,7 @@ function makeAlert(ext, change) {
   };
 }
 
+// The badge counts alerts not seen yet; red if one of them is serious.
 async function updateBadge(alerts) {
   const unseen = alerts.filter((a) => !a.seen);
   await chrome.action.setBadgeText({ text: unseen.length ? String(unseen.length) : '' });
@@ -43,9 +49,22 @@ async function updateBadge(alerts) {
   await chrome.action.setBadgeBackgroundColor({ color: high ? '#d93025' : '#e37400' });
 }
 
-async function addAlerts(fresh) {
-  if (!fresh.length) return;
+// The same event reported again within this time, while the first alert is
+// still in the list, is dropped. This happens when a store page flickers
+// between two states, or a developer switches a field back and forth.
+const REPEAT_MS = 7 * 24 * 60 * 60 * 1000;
+
+function isRepeat(alert, alerts) {
+  return alerts.some((a) => a.extId === alert.extId && a.type === alert.type && a.detail === alert.detail
+    && alert.at - a.at < REPEAT_MS);
+}
+
+// Saves new alerts, newest first, and notifies only for serious ones.
+async function addAlerts(candidates) {
+  if (!candidates.length) return;
   const { alerts } = await load();
+  const fresh = candidates.filter((a) => !isRepeat(a, alerts));
+  if (!fresh.length) return;
   const next = [...fresh, ...alerts].slice(0, MAX_ALERTS);
   await chrome.storage.local.set({ alerts: next });
   await updateBadge(next);
@@ -61,9 +80,13 @@ async function addAlerts(fresh) {
 }
 
 // Compares installed extensions with what we saw last time.
-// With `baseline`, it only records the current state (first run).
+// With `baseline`, it only records the current state (first run). A scan
+// that runs before any baseline exists also counts as one, so a check that
+// sneaks in ahead of the first-run scan doesn't flag every extension as new.
 async function scanInstalled({ baseline = false } = {}) {
   const { snapshots, storeInfo } = await load();
+  const { lastScanAt } = await chrome.storage.local.get({ lastScanAt: null });
+  if (!lastScanAt) baseline = true;
   const exts = await installedExtensions();
   const next = {};
   const fresh = [];
@@ -143,13 +166,36 @@ async function checkStore(onlyIds = null) {
   await addAlerts(fresh);
 }
 
-async function forget(id) {
-  const { snapshots, storeInfo } = await load();
+// Drops everything we kept about extensions that are no longer installed,
+// alerts included: once an extension is gone, its warnings are settled.
+async function forget(ids) {
+  const gone = new Set(ids);
+  if (!gone.size) return;
+  const { snapshots, storeInfo, alerts } = await load();
+  const { siteRules, pausedBySites, allowedBySites } = await chrome.storage.local.get({ siteRules: {}, pausedBySites: [], allowedBySites: [] });
+  for (const id of gone) {
+    delete snapshots[id];
+    delete storeInfo[id];
+    delete siteRules[id];
+  }
+  const nextAlerts = alerts.filter((a) => !gone.has(a.extId));
+  await chrome.storage.local.set({
+    snapshots, storeInfo, siteRules,
+    alerts: nextAlerts,
+    pausedBySites: pausedBySites.filter((x) => !gone.has(x)),
+    allowedBySites: allowedBySites.filter((x) => !gone.has(x)),
+  });
+  if (nextAlerts.length !== alerts.length) await updateBadge(nextAlerts);
+}
+
+// Finds ids we still keep data for that are no longer installed, for
+// uninstalls we missed (Guardian was turned off at the time, say).
+async function forgetMissing() {
+  const installed = new Set((await installedExtensions()).map((e) => e.id));
+  const { storeInfo, alerts } = await load();
   const { siteRules } = await chrome.storage.local.get({ siteRules: {} });
-  delete snapshots[id];
-  delete storeInfo[id];
-  delete siteRules[id];
-  await chrome.storage.local.set({ snapshots, storeInfo, siteRules });
+  const kept = [...Object.keys(storeInfo), ...Object.keys(siteRules), ...alerts.map((a) => a.extId)];
+  await forget(kept.filter((id) => !installed.has(id)));
 }
 
 // "Keep off on these sites". Reading the active tab's address needs the
@@ -160,24 +206,60 @@ async function applySiteRules() {
   const [tab] = await chrome.tabs.query({ active: true, lastFocusedWindow: true });
   // No address (a devtools window, a closed window): leave things as they are.
   if (!tab?.url) return;
-  const { siteRules, pausedBySites } = await chrome.storage.local.get({ siteRules: {}, pausedBySites: [] });
-  const plan = planSiteRules({ url: tab.url, rules: siteRules, exts: await installedExtensions(), paused: pausedBySites });
+  const { siteRules, pausedBySites, allowedBySites } = await chrome.storage.local.get({ siteRules: {}, pausedBySites: [], allowedBySites: [] });
+  const plan = planSiteRules({
+    url: tab.url, rules: siteRules, exts: await installedExtensions(), paused: pausedBySites, allowed: allowedBySites,
+  });
   for (const id of plan.disable) await chrome.management.setEnabled(id, false).catch(console.warn);
   for (const id of plan.enable) await chrome.management.setEnabled(id, true).catch(console.warn);
-  await chrome.storage.local.set({ pausedBySites: plan.paused });
+  await chrome.storage.local.set({ pausedBySites: plan.paused, allowedBySites: plan.allowed });
 }
 
+// A scan or store check that is queued but hasn't started yet takes in later
+// requests instead of queueing another. When Chrome updates ten extensions
+// at startup, that is one scan and one server call instead of ten.
+let pendingScan = null;
+function queueScan() {
+  if (!pendingScan) {
+    pendingScan = serial(() => { pendingScan = null; return scanInstalled(); });
+  }
+  return pendingScan;
+}
+
+let pendingCheck = null;
+// `ids` null means every extension.
+function queueStoreCheck(ids = null) {
+  if (pendingCheck) {
+    if (!ids) pendingCheck.ids = null;
+    else pendingCheck.ids?.push(...ids);
+    return pendingCheck.run;
+  }
+  const pending = { ids: ids && [...ids] };
+  pending.run = serial(() => {
+    pendingCheck = null;
+    return checkStore(pending.ids && [...new Set(pending.ids)]);
+  });
+  pendingCheck = pending;
+  return pending.run;
+}
+
+// onInstalled and onStartup both call this. Chrome keeps alarms across
+// restarts, so it only creates one when it is missing.
 async function ensureAlarm() {
   if (!(await chrome.alarms.get(STORE_CHECK_ALARM))) {
-    chrome.alarms.create(STORE_CHECK_ALARM, { delayInMinutes: 1, periodInMinutes: STORE_CHECK_MINUTES });
+    await chrome.alarms.create(STORE_CHECK_ALARM, { delayInMinutes: 1, periodInMinutes: STORE_CHECK_MINUTES });
   }
 }
 
-chrome.runtime.onInstalled.addListener(async ({ reason }) => {
+// Work is queued right away, before any await, so nothing else (a "Check now"
+// from the popup, an extension update) can run ahead of the first-run scan.
+chrome.runtime.onInstalled.addListener(({ reason }) => {
   ensureAlarm();
   // When the popup may first ask for a rating. Users updating from 0.1.0 start counting now.
-  const { installedAt } = await chrome.storage.local.get('installedAt');
-  if (!installedAt) await chrome.storage.local.set({ installedAt: Date.now() });
+  serial(async () => {
+    const { installedAt } = await chrome.storage.local.get('installedAt');
+    if (!installedAt) await chrome.storage.local.set({ installedAt: Date.now() });
+  });
   if (reason === 'install') {
     chrome.tabs.create({ url: chrome.runtime.getURL('src/welcome/welcome.html') });
     serial(() => scanInstalled({ baseline: true }));
@@ -187,21 +269,24 @@ chrome.runtime.onInstalled.addListener(async ({ reason }) => {
 
 chrome.runtime.onStartup.addListener(() => {
   ensureAlarm();
-  serial(() => scanInstalled());
+  serial(forgetMissing);
+  queueScan();
 });
 
 chrome.alarms.onAlarm.addListener((alarm) => {
-  if (alarm.name === STORE_CHECK_ALARM) serial(() => checkStore());
+  if (alarm.name !== STORE_CHECK_ALARM) return;
+  serial(forgetMissing);
+  queueStoreCheck();
 });
 
 // Fires for new installs and for updates of existing extensions.
 chrome.management.onInstalled.addListener((ext) => {
   if (ext.type !== 'extension') return;
-  serial(() => scanInstalled());
-  serial(() => checkStore([ext.id]));
+  queueScan();
+  queueStoreCheck([ext.id]);
 });
 
-chrome.management.onUninstalled.addListener((id) => serial(() => forget(id)));
+chrome.management.onUninstalled.addListener((id) => serial(() => forget([id])));
 
 chrome.notifications.onClicked.addListener((id) => {
   chrome.tabs.create({ url: chrome.runtime.getURL('src/popup/popup.html?view=tab') });
@@ -210,8 +295,8 @@ chrome.notifications.onClicked.addListener((id) => {
 
 const handlers = {
   async scan() {
-    await serial(() => scanInstalled());
-    await serial(() => checkStore());
+    await queueScan();
+    await queueStoreCheck();
   },
   async markSeen() {
     const { alerts } = await load();
