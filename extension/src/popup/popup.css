@@ -102,6 +102,7 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--accent); outlin
 .chips li { display: flex; align-items: center; gap: 4px; background: var(--surface); border: 1px solid var(--border); border-radius: 999px; padding: 2px 4px 2px 10px; font-size: 12px; }
 .chip-x { background: none; border: none; color: var(--muted); padding: 0 6px; font-size: 14px; line-height: 1; }
 .sites .warn { margin-top: 8px; }
+.site-form input[aria-invalid="true"] { border-color: var(--high); }
 .site-form { display: flex; gap: 6px; margin-top: 8px; }
 .site-form input { flex: 1; min-width: 0; font: inherit; padding: 6px 10px; border-radius: 8px; border: 1px solid var(--border); background: var(--bg); color: var(--text); }
 .site-form input:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
@@ -114,6 +115,11 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--accent); outlin
   background: none; border: none; border-radius: 0; padding: 10px 12px; text-align: left; color: inherit;
 }
 .ext-head:hover { background: var(--surface); }
+/* Inside the outline, since the list clips anything outside it. */
+.ext-head:focus-visible { outline-offset: -2px; }
+
+.filter { width: 100%; margin-bottom: 8px; font: inherit; padding: 6px 10px; border-radius: 8px; border: 1px solid var(--border); background: var(--bg); color: var(--text); }
+.filter:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 .icon { width: 28px; height: 28px; border-radius: 6px; flex: none; }
 .icon.letter { display: grid; place-items: center; background: var(--surface); color: var(--muted); font-weight: 700; }
 .ext-name { flex: 1; min-width: 0; }
@@ -144,5 +150,7 @@ dd { margin: 0; overflow-wrap: anywhere; }
 .empty { padding: 12px 0; }
 
 footer { margin-top: 14px; color: var(--muted); font-size: 11px; text-align: center; }
-.family { margin: 6px 0 0; }
+.family, .export { margin: 6px 0 0; }
+.export button.link { font-size: 11px; font-weight: 500; }
+.offscreen { position: fixed; left: -9999px; }
 .family a.link { font-weight: 500; }
