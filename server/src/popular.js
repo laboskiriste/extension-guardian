@@ -583,7 +583,7 @@ export const POPULAR = [
  },
  {
   "id": "jnkmfdileelhofjcijamephohjechhna",
-  "name": "Google Analytics Debugger"
+  "name": "[Deprecated] Google Analytics Debugger"
  },
  {
   "id": "npdkkcjlmhcnnaoobfdjndibfkkhhdfn",

@@ -72,7 +72,7 @@ test('check page shows the form, and results for a pasted store link', async () 
   assert.match(html, new RegExp(`rel="canonical" href="[^"]+/extension/dark-reader/${DARK}"`));
 
   assert.equal((await get(`/?q=${GONE}`)).headers.get('Location'), `/extension/${GONE}`);
-  assert.match(await (await get(`/extension/${GONE}`)).text(), /Not in the Chrome Web Store/);
+  assert.match(await (await get(`/extension/${GONE}`)).text(), /No longer in the Chrome Web Store/);
   assert.match(await (await get('/?q=hello')).text(), /doesn't look like a Chrome Web Store link/);
 });
 
@@ -82,7 +82,11 @@ test('popular page, sitemap and robots.txt', async () => {
   assert.match(popular, new RegExp(`/extension/[a-z0-9-]+/${POPULAR[0].id}`));
   const sitemap = await get('/sitemap.xml');
   assert.match(sitemap.headers.get('Content-Type'), /xml/);
-  assert.equal((await sitemap.text()).match(/<loc>/g).length, POPULAR.length + 4);
+  const { REPORT } = await import('../src/report-data.js');
+  const { INCIDENTS } = await import('../src/incidents.js');
+  const locs = (await sitemap.text()).match(/<loc>[^<]+<\/loc>/g);
+  assert.equal(new Set(locs).size, locs.length);
+  assert.equal(locs.length, new Set([...POPULAR, ...REPORT.stale].map((e) => e.id)).size + INCIDENTS.length + 6);
   assert.match(await (await get('/robots.txt')).text(), /Sitemap: .+\/sitemap\.xml/);
 });
 
