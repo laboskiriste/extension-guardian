@@ -99,7 +99,7 @@ spyware
 **Notes for certification**
 
 ```
-Extension Guardian reads the list of installed extensions with the management permission and rates each one. It never changes another extension unless the user clicks Turn off or Remove in the popup.
+Extension Guardian reads the list of installed extensions with the management permission and rates each one. It changes another extension only when the user asks: by clicking Turn off or Remove in the popup, or through a "Keep off on these sites" rule the user set up (optional tabs permission, requested only then).
 
 To test: install a few extensions, open the popup and expand any extension to see its Access and Risk ratings. Press "Check now" to look up developer information. That sends only extension IDs to our server (https://app.extensionguardian.workers.dev/v1/store), which reads the public Chrome Web Store page and returns JSON. No account or sign-in is needed.
 

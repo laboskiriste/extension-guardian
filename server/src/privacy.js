@@ -17,7 +17,7 @@ export const PRIVACY_HTML = `<!doctype html>
 </head>
 <body>
 <h1>Extension Guardian – Privacy Policy</h1>
-<p class="muted">Effective October 26, 2026</p>
+<p class="muted">Effective October 31, 2026</p>
 
 <p>Extension Guardian checks the other extensions installed in your browser and warns you when one looks risky.
 It is built to need as little of your data as possible. This page explains exactly what it uses.</p>
@@ -26,6 +26,9 @@ It is built to need as little of your data as possible. This page explains exact
 <p>The extension reads the list of extensions installed in your browser, with their names, versions, permissions and how they were installed,
 using Chrome's <code>management</code> API. It saves this list, the results of its checks and your alerts in your browser's local storage,
 so it can tell when something changes. This data never leaves your device, except as described below.</p>
+<p>If you use <strong>Keep off on these sites</strong>, the extension also reads the address of the active tab (Chrome's optional
+<code>tabs</code> permission, which it asks for only then) and compares it on your device with the sites you chose. Addresses are not stored
+and never leave your device. The sites you chose are saved in your browser's local storage.</p>
 
 <h2>What is sent to our server</h2>
 <p>To find out who publishes each extension, the extension sends the <strong>IDs of your installed Chrome Web Store extensions</strong>

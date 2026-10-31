@@ -1,7 +1,8 @@
 import { assessRisk, isFromStore, updateSource } from '../lib/risk.js';
-import { edgeStorePageUrl, reviewPageUrl, storePageUrl } from '../lib/store.js';
+import { edgeStorePageUrl, reviewPageUrl, searchPageUrl, storePageUrl } from '../lib/store.js';
 import { IS_FIREFOX, STORE } from '../lib/platform.js';
 import { normalizeSite } from '../lib/sites.js';
+import { replacementFor } from '../lib/replacements.js';
 import '../lib/family.js';
 
 const app = document.getElementById('app');
@@ -177,7 +178,7 @@ function storeDetails(ext, store) {
   }
   if (!store) return h('p', { class: 'muted' }, 'Not checked yet. Press "Check now".');
   if (store.status === 'unlisted') return h('p', { class: 'muted' }, `Not listed on ${STORE.the}, so we can't check its developer.`);
-  if (store.status === 'not_found') return h('p', { class: 'warn' }, `This extension is no longer listed in ${STORE.the}.`);
+  if (store.status === 'not_found') return removalHelp(ext);
   const rows = [
     ['Developer', store.developerName ?? store.offeredBy],
     ['Email', store.email],
@@ -188,6 +189,28 @@ function storeDetails(ext, store) {
     ['Checked', timeAgo(store.checkedAt)],
   ].filter(([, v]) => v);
   return h('dl', {}, rows.map(([k, v]) => [h('dt', {}, k), h('dd', {}, v)]));
+}
+
+// An extension gone from the store gets no more updates, security fixes
+// included. Say what to do instead of only raising the alarm.
+function removalHelp(ext) {
+  const swap = IS_FIREFOX ? null : replacementFor(ext.id);
+  return h('div', { class: 'removed' },
+    h('p', { class: 'warn' }, `This extension is no longer listed in ${STORE.the}.`),
+    h('p', {}, `${STORE.owner} may have removed it for malware or for breaking the rules, or the developer took it down.${
+      IS_FIREFOX ? '' : ' Many older extensions were also removed in 2026 because Chrome no longer supports them (Manifest V2).'
+    } Either way, it won't get updates or security fixes any more.`),
+    h('h3', {}, 'What to do'),
+    h('ol', {},
+      h('li', {}, 'If you don\'t need it, remove it.'),
+      swap?.id && h('li', {}, 'Switch to ',
+        h('a', { class: 'link', href: storePageUrl(swap.id), target: '_blank', rel: 'noopener' }, `${swap.name} ↗`),
+        `, ${swap.why}`),
+      swap?.builtIn && h('li', {}, swap.builtIn),
+      !swap && h('li', {}, 'If you need it, look for a maintained replacement and check it here after installing. ',
+        h('a', { class: 'link', href: searchPageUrl(ext.name), target: '_blank', rel: 'noopener' }, 'Search the store ↗')),
+    ),
+  );
 }
 
 function riskReasons(ext, store, risk) {
@@ -279,7 +302,8 @@ function extensionRow({ ext, store, risk }) {
           onclick: async () => { try { await chrome.management.uninstall(ext.id, { showConfirmDialog: true }); } catch {} refresh(); },
         }, 'Remove'),
         IS_FIREFOX && h('span', { class: 'muted' }, 'Turn off or remove it in about:addons.'),
-        isFromStore(ext) && h('a', { class: 'link', href: storePageUrl(ext.id), target: '_blank' }, 'View in store ↗'),
+        isFromStore(ext) && store?.status !== 'not_found'
+          && h('a', { class: 'link', href: storePageUrl(ext.id), target: '_blank' }, 'View in store ↗'),
         ext.installType !== 'development' && updateSource(ext) === 'edge'
           && h('a', { class: 'link', href: edgeStorePageUrl(ext.id), target: '_blank' }, 'View in store ↗'),
       ),

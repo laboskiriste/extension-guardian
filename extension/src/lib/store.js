@@ -21,6 +21,12 @@ export function reviewPageUrl(id) {
   return IS_FIREFOX ? `${storePageUrl(id)}reviews/` : `${storePageUrl(id)}/reviews`;
 }
 
+// Store search for an extension's name, to find a replacement for it.
+export function searchPageUrl(name) {
+  const q = encodeURIComponent(name);
+  return IS_FIREFOX ? `https://addons.mozilla.org/firefox/search/?q=${q}` : `https://chromewebstore.google.com/search/${q}`;
+}
+
 export function edgeStorePageUrl(id) {
   return `https://microsoftedge.microsoft.com/addons/detail/${id}`;
 }

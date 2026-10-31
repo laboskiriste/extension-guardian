@@ -45,7 +45,10 @@ TWO CLEAR RATINGS
 A password manager needs full access to work, so full access alone doesn't mean danger. Extension Guardian tells the two apart, so you only get alerts that matter.
 
 ONE CLICK TO ACT
-Turn off or remove an extension right from the list, or open its store page.
+Turn off or remove an extension right from the list, or open its store page. If an extension was removed from the store, Extension Guardian tells you what to do next, and for well-known ones what to use instead.
+
+KEEP EXTENSIONS OFF YOUR BANK
+Choose sites where an extension should never run, like your bank or email. Extension Guardian turns it off while you're there and back on when you leave.
 
 PRIVATE BY DESIGN
 • Your list of extensions and all results stay on your device.
@@ -68,14 +71,14 @@ Extension Guardian is part of Tinyward, small privacy tools with as few permissi
 **Single purpose**
 
 ```
-Extension Guardian has one purpose: helping users see which of their installed extensions are risky and warning them when an extension changes in a dangerous way (new owner, new permissions, removal from the Chrome Web Store).
+Extension Guardian has one purpose: protecting users from their installed extensions. It shows which ones are risky, warns them when an extension changes in a dangerous way (new owner, new permissions, removal from the Chrome Web Store), and can keep chosen extensions turned off on sensitive sites such as the user's bank.
 ```
 
 **Permission justifications**
 
 `management`
 ```
-Required to read the list of installed extensions and their permissions, which is the core of the product, and to let the user turn off or remove a risky extension from the popup. The extension never changes other extensions without the user clicking a button.
+Required to read the list of installed extensions and their permissions, which is the core of the product, and to let the user turn off or remove a risky extension from the popup. The extension changes another extension only when the user asks: by clicking Turn off or Remove, or through a "Keep off on these sites" rule the user created for that extension.
 ```
 
 `storage`
@@ -86,6 +89,11 @@ Stores the last known state of each installed extension and the alerts on the us
 `alarms`
 ```
 Schedules a check of the Chrome Web Store information every 6 hours, so ownership changes and removals are noticed even when the user does not open the popup.
+```
+
+`tabs` (optional, asked for only when the user adds a first "Keep off on these sites" rule)
+```
+Reads the address of the active tab so an extension the user chose can be turned off while one of the user's sites is open (for example their bank) and turned back on when they leave. The address is compared on the device and never stored or sent anywhere.
 ```
 
 `notifications`
