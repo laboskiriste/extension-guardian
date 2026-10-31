@@ -7,12 +7,23 @@ export const PRIVACY_HTML = `<!doctype html>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Extension Guardian – Privacy Policy</title>
+<meta name="description" content="What Extension Guardian and its web checker use, what they send to our server, and what they never do. No analytics, no tracking, no IP logs.">
+<link rel="canonical" href="https://app.extensionguardian.workers.dev/privacy">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Extension Guardian">
+<meta property="og:title" content="Extension Guardian – Privacy Policy">
+<meta property="og:description" content="What Extension Guardian uses, what it sends, and what it never does.">
+<meta property="og:url" content="https://app.extensionguardian.workers.dev/privacy">
+<meta property="og:image" content="https://app.extensionguardian.workers.dev/og/default.png">
+<meta name="twitter:card" content="summary_large_image">
 <style>
   :root { color-scheme: light dark; }
-  body { font: 16px/1.6 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; max-width: 720px; margin: 40px auto; padding: 0 16px; }
+  body { font: 16px/1.6 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; max-width: 720px; margin: 40px auto; padding: 0 16px; overflow-wrap: anywhere; }
   h1 { font-size: 28px; margin-bottom: 4px; }
   h2 { font-size: 19px; margin-top: 32px; }
   .muted { opacity: .7; }
+  footer { margin-top: 48px; font-size: 14px; }
 </style>
 </head>
 <body>
@@ -64,6 +75,11 @@ paste in, looks up the same public store information, and keeps it for up to 6 h
 
 <h2>Contact</h2>
 <p>Questions: <a href="mailto:${CONTACT_EMAIL}">${CONTACT_EMAIL}</a></p>
+
+<footer class="muted">
+  <a href="/">Check an extension</a> · <a href="/how-it-works">How it works</a> · <a href="https://github.com/laboskiriste/extension-guardian">Source</a><br>
+  A Tinyward project. Also from Tinyward: <a href="https://laboskiriste.github.io/unseen/">Unseen</a>, which blocks email tracking pixels in Gmail.
+</footer>
 </body>
 </html>
 `;

@@ -2,13 +2,18 @@
 // extension using only its Chrome Web Store listing, the same data the
 // extension uses, and points visitors to the extension for what a web page
 // can't see: permissions and changes over time.
-import { INCIDENTS, incidentFor, incidentPath, reportedName } from './incidents.js';
+import { INCIDENTS, findIncident, incidentFor, incidentPath, reportedName } from './incidents.js';
 import { REPORT } from './report-data.js';
+import { replacementFor } from './replacements.js';
 
 const STORE_LINK = 'https://chromewebstore.google.com/detail/extension-guardian/mpceklcidiadoneogfmpkjpadihmlcjd';
 const GITHUB_LINK = 'https://github.com/laboskiriste/extension-guardian';
 const UNSEEN_LINK = 'https://laboskiriste.github.io/unseen/';
 const DAY = 24 * 60 * 60 * 1000;
+
+// A name for an extension the store no longer shows: from a malware report,
+// or from our list of well-known removed extensions.
+const knownName = (id) => reportedName(id) ?? replacementFor(id)?.removed ?? null;
 
 export function extractId(input) {
   return /[a-p]{32}/.exec(String(input ?? ''))?.[0] ?? null;
@@ -112,17 +117,40 @@ function incidentHtml(id) {
   </section>`;
 }
 
+// What to use instead of a well-known extension that left the store.
+function replacementHtml(id) {
+  const r = replacementFor(id);
+  if (!r) return '';
+  const instead = r.builtIn
+    ? `<p class="text">${escapeHtml(r.builtIn)} You don't need an extension for it.</p>`
+    : `<p class="text"><a href="${extensionPath(r.id, r.name)}">${escapeHtml(r.name)}</a>, ${escapeHtml(r.why)}</p>`;
+  return `
+  <section class="card">
+    <h2>What to use instead</h2>
+    ${instead}
+  </section>`;
+}
+
+// Removed listings have nothing left to weigh, so the verdict says why it's
+// gone, as far as we know, instead of judging a listing that isn't there.
+function goneVerdict(id) {
+  if (incidentFor(id)) return { label: 'Removed after a malware report', text: 'If you have it installed, remove it now.' };
+  if (replacementFor(id)) return { label: 'No longer in the Chrome Web Store', text: 'It gets no more updates, and current Chrome may not run it. Switch to the replacement below.' };
+  return { label: 'No longer in the Chrome Web Store', text: 'There is no listing to check. Google often removes malware this way, so if you have it installed, consider removing it.' };
+}
+
 function resultHtml(id, info) {
   if (info.status === 'error') {
-    return `<section class="card"><p>The Chrome Web Store didn't answer just now. Please try again in a minute.</p></section>`;
+    return `<section class="card"><p class="text">The Chrome Web Store didn't answer just now. Please try again in a minute.</p></section>`;
   }
+  const gone = info.status === 'not_found';
   const { verdict, signals } = storeSignals(info);
-  const v = VERDICTS[verdict];
-  const list = signals.map((s) => `
+  const v = gone ? goneVerdict(id) : VERDICTS[verdict];
+  const list = gone ? '' : signals.map((s) => `
     <li class="${s.kind}"><span class="mark" aria-hidden="true">${s.kind === 'good' ? '✓' : '!'}</span>
       <div><strong>${escapeHtml(s.title)}</strong><span class="muted">${escapeHtml(s.detail)}</span></div></li>`).join('');
   const storeUrl = `https://chromewebstore.google.com/detail/${id}`;
-  const name = info.title ?? reportedName(id) ?? 'Unknown extension';
+  const name = info.title ?? knownName(id) ?? 'Unknown extension';
   const icon = info.icon?.startsWith('https://lh3.googleusercontent.com/')
     ? `<img class="ext-icon" src="${escapeHtml(info.icon)}" alt="" width="56" height="56">`
     : `<span class="ext-icon letter" aria-hidden="true">${escapeHtml(name.trim()[0]?.toUpperCase() ?? '?')}</span>`;
@@ -136,7 +164,7 @@ function resultHtml(id, info) {
     <div class="verdict"><span class="verdict-icon" aria-hidden="true">${ICONS[verdict]}</span>
       <div><strong>${v.label}</strong><span>${v.text}</span></div></div>
     ${list ? `<ul class="signals">${list}</ul>` : ''}
-  </section>
+  </section>${replacementHtml(id)}
   ${info.status === 'ok' ? `<section class="card">
     <h2>Who makes it</h2><dl>${developerRows(info)}</dl>
     <p class="store-link"><a href="${storeUrl}" rel="noopener">View in the Chrome Web Store ↗</a></p>
@@ -146,6 +174,10 @@ function resultHtml(id, info) {
 export const SITE = 'https://app.extensionguardian.workers.dev';
 export const OG_DEFAULT_PATH = '/og/default.png';
 export const OG_REPORT_PATH = '/og/report.png';
+export const FAVICON_PATH = '/favicon.svg';
+export const MANIFEST_PATH = '/manifest.webmanifest';
+export const HOW_PATH = '/how-it-works';
+export const INCIDENTS_PATH = '/incidents';
 
 export const slugify = (name) => (String(name).split(/\s[-–—:|]\s|:\s/)[0].toLowerCase()
   .replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 50).replace(/-+$/, '')) || 'extension';
@@ -176,8 +208,12 @@ const STYLE = `
     }
   }
   * { box-sizing: border-box; }
-  body { margin: 0; background: var(--bg); color: var(--text); font: 16px/1.6 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 16px/1.6 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; overflow-wrap: break-word; }
   a { color: var(--accent); }
+  :focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+  .hero :focus-visible { outline-color: #fff; }
+  .skip { position: absolute; left: 8px; top: -60px; z-index: 10; padding: 8px 14px; border-radius: 8px; background: var(--surface); color: var(--text); font-weight: 600; }
+  .skip:focus { top: 8px; }
   .wrap { max-width: 760px; margin: 0 auto; padding: 0 16px; }
   .hero { background: var(--hero); color: #fff; padding: 20px 0 48px; position: relative; overflow: hidden; }
   .hero::after { content: ""; position: absolute; inset: 0; pointer-events: none; opacity: .12;
@@ -191,9 +227,12 @@ const STYLE = `
   .nav a.install:hover { background: #ffffff1a; }
   h1 { font-size: clamp(28px, 5vw, 42px); line-height: 1.1; margin: 0 0 14px; letter-spacing: -.025em; font-weight: 800; }
   .lead { font-size: 18px; margin: 0; color: #e3f2ea; max-width: 600px; }
+  .lead a.hero-link { color: #fff; }
   .search { display: flex; gap: 8px; margin-top: 28px; padding: 8px; background: var(--surface); border-radius: 14px; box-shadow: 0 10px 30px rgb(0 0 0 / 20%); }
   .search input { flex: 1; min-width: 0; font: inherit; padding: 12px 14px; border: 0; background: transparent; color: var(--text); outline: none; }
-  .search:focus-within { box-shadow: 0 10px 30px rgb(0 0 0 / 20%), 0 0 0 3px #ffffff66; }
+  .search:focus-within { box-shadow: 0 10px 30px rgb(0 0 0 / 20%), 0 0 0 3px #ffffffaa; }
+  main .search { box-shadow: none; border: 1px solid var(--line); }
+  main .search:focus-within { box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 45%, transparent); border-color: var(--accent); }
   button, .button { font: inherit; font-weight: 600; padding: 12px 22px; border: 0; border-radius: 10px; background: var(--accent); color: var(--on-accent); cursor: pointer; text-decoration: none; display: inline-block; }
   button:hover, .button:hover { background: var(--accent-hover); }
   .hint { margin: 10px 4px 0; font-size: 14px; color: #d3eadd; }
@@ -203,6 +242,7 @@ const STYLE = `
   h2 { font-size: 18px; margin: 0 0 12px; }
   .muted { color: var(--muted); }
   .ext-head { display: flex; align-items: center; gap: 16px; margin-bottom: 18px; }
+  .ext-head > div { min-width: 0; } .ext-head .muted { overflow-wrap: anywhere; }
   .ext-head h2 { font-size: 24px; line-height: 1.2; margin: 0 0 2px; overflow-wrap: anywhere; }
   .ext-icon { flex: none; width: 56px; height: 56px; border-radius: 14px; background: #fff; border: 1px solid var(--line); object-fit: contain; padding: 6px; }
   .ext-icon.letter { display: grid; place-items: center; padding: 0; background: var(--accent-soft); color: var(--accent); font-size: 26px; font-weight: 800; }
@@ -287,8 +327,13 @@ const STYLE = `
   .table th { color: var(--muted); font-weight: 600; font-size: 13px; border-top: 0; }
   .table td:nth-child(2), .table th:nth-child(2) { text-align: right; white-space: nowrap; }
   .table-wrap { overflow-x: auto; }
+  .faq h2 { margin: 0 0 6px; } .faq p { margin: 0; }
   footer { padding: 32px 0 48px; font-size: 14px; color: var(--muted); text-align: center; }
   footer a { color: var(--muted); }
+  @media (prefers-reduced-motion: reduce) {
+    * { transition: none !important; }
+    .popular a:hover, .teaser:hover { transform: none; }
+  }
   @media (prefers-color-scheme: dark) {
     .avatar { background: hsl(var(--h) 30% 22%); color: hsl(var(--h) 65% 78%); }
   }
@@ -309,7 +354,11 @@ const STYLE = `
   }
 `;
 
-function layout({ title, description, canonical, hero, body, image = OG_DEFAULT_PATH, wide = false }) {
+// Text for a <script type="application/ld+json"> block. Escaping "<" keeps
+// store text from closing the element early.
+const jsonLd = (data) => `<script type="application/ld+json">${JSON.stringify(data).replace(/</g, '\\u003c')}</script>`;
+
+function layout({ title, description, canonical, hero, body, image = OG_DEFAULT_PATH, wide = false, noindex = false, structured = null }) {
   const wrap = wide ? 'wrap wide' : 'wrap';
   return `<!doctype html>
 <html lang="en">
@@ -319,6 +368,8 @@ function layout({ title, description, canonical, hero, body, image = OG_DEFAULT_
 <title>${title}</title>
 <meta name="description" content="${description}">
 <meta name="theme-color" content="#1f7a4d">
+${noindex ? '<meta name="robots" content="noindex">\n' : ''}<link rel="icon" href="${FAVICON_PATH}" type="image/svg+xml">
+<link rel="manifest" href="${MANIFEST_PATH}">
 ${canonical ? `<link rel="canonical" href="${SITE}${canonical}">` : ''}
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="Extension Guardian">
@@ -329,9 +380,11 @@ ${canonical ? `<meta property="og:url" content="${SITE}${canonical}">` : ''}
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
 <meta name="twitter:card" content="summary_large_image">
+${structured ? jsonLd(structured) : ''}
 <style>${STYLE}</style>
 </head>
 <body>
+<a class="skip" href="#main">Skip to content</a>
 <header class="hero"><div class="${wrap}">
   <nav class="nav">
     <a class="brand" href="/">${SHIELD}Extension Guardian</a>
@@ -339,11 +392,11 @@ ${canonical ? `<meta property="og:url" content="${SITE}${canonical}">` : ''}
   </nav>
   ${hero}
 </div></header>
-<main class="${wrap}">
+<main class="${wrap}" id="main">
 ${body}
 </main>
 <footer class="${wrap}">
-  <a href="${STORE_LINK}">Extension Guardian</a> · <a href="/popular">Popular extensions</a> · <a href="${REPORT_PATH}">Popular extensions report</a> · <a href="${incidentPath(INCIDENTS[0])}">Latest incident</a> · <a href="${GITHUB_LINK}">Source</a> · <a href="/privacy">Privacy</a><br>
+  <a href="${STORE_LINK}">Extension Guardian</a> · <a href="/popular">Popular extensions</a> · <a href="${REPORT_PATH}">Popular extensions report</a> · <a href="${INCIDENTS_PATH}">Incidents</a> · <a href="${HOW_PATH}">How it works</a> · <a href="${GITHUB_LINK}">Source</a> · <a href="/privacy">Privacy</a><br>
   Based only on the public Chrome Web Store listing. Not a malware scan.<br>
   A Tinyward project. Also from Tinyward: <a href="${UNSEEN_LINK}">Unseen</a>, which blocks email tracking pixels in Gmail.
 </footer>
@@ -404,9 +457,39 @@ const reportTeaser = () => `
 
 const INVALID = '<p class="error">That doesn\'t look like a Chrome Web Store link. Copy the address of the extension\'s store page and paste it here.</p>';
 
+// The search snippet for an extension's page, built from what its listing
+// says, so each page reads differently in results.
+function checkDescription(id, info, name) {
+  if (info?.status === 'not_found') {
+    const why = incidentFor(id) ? 'It was named in a malware report and is' : 'It is';
+    return `${why} no longer in the Chrome Web Store. What that means and what to do if ${name ?? 'it'} is installed.`;
+  }
+  const facts = [
+    (info?.developerName ?? info?.offeredBy) && `by ${escapeHtml(info.developerName ?? info.offeredBy)}`,
+    info?.users && `${escapeHtml(info.users)} users`,
+    info?.updated && `last updated ${escapeHtml(info.updated)}`,
+  ].filter(Boolean);
+  const lead = facts.length ? `${name}: ${facts.join(', ')}. ` : '';
+  return `${lead}Who makes ${name ?? 'this extension'}, how many people use it, and whether it is still maintained, from its Chrome Web Store listing.`;
+}
+
+const homeData = () => ({
+  '@context': 'https://schema.org',
+  '@type': 'SoftwareApplication',
+  name: 'Extension Guardian',
+  description: 'Warns you when a Chrome extension you use changes owner, gains new permissions or is removed from the Chrome Web Store.',
+  applicationCategory: 'SecurityApplication',
+  operatingSystem: 'Chrome',
+  url: `${SITE}/`,
+  downloadUrl: STORE_LINK,
+  license: 'https://opensource.org/licenses/MIT',
+  isAccessibleForFree: true,
+  offers: { '@type': 'Offer', price: '0', priceCurrency: 'USD' },
+});
+
 export function renderCheckPage({ query = '', id = null, info = null, popular = [] } = {}) {
-  const knownName = info?.title ?? (id && reportedName(id));
-  const name = knownName ? escapeHtml(knownName) : null;
+  const shownName = info?.title ?? (id && knownName(id));
+  const name = shownName ? escapeHtml(shownName) : null;
   const invalid = query && !id;
   const hero = name || id
     ? `<h1>Is ${name ?? 'this extension'} safe?</h1>
@@ -428,15 +511,20 @@ ${invalid ? INVALID : '<p class="hint">Works with any link from chromewebstore.g
 ${FEATURES}`
       : '';
   const home = !id && !invalid;
+  let canonical = '/';
+  if (id) canonical = info?.status === 'error' ? null : (shownName ? extensionPath(id, shownName) : `/extension/${id}`);
   return layout({
     title: name ? `Is ${name} safe? · Extension Guardian` : 'Is this Chrome extension safe? · Extension Guardian',
-    description: name
-      ? `Who makes ${name}, how many people use it, and whether it is still maintained, from its Chrome Web Store listing.`
+    description: id
+      ? checkDescription(id, info, name)
       : 'Paste a Chrome Web Store link to see who makes an extension, how many people use it, and whether it is maintained. Free, no sign-up.',
-    canonical: id && info?.status === 'ok' ? extensionPath(id, info.title) : (id ? null : '/'),
+    canonical: invalid ? null : canonical,
     hero,
     body,
     wide: home,
+    // A failed lookup or a rejected query isn't a page worth indexing.
+    noindex: info?.status === 'error' || invalid,
+    structured: home ? homeData() : null,
   });
 }
 
@@ -444,10 +532,11 @@ export function renderNotFoundPage() {
   return layout({
     title: 'Page not found · Extension Guardian',
     description: 'This page does not exist.',
+    noindex: true,
     hero: `<h1>Page not found</h1>
 <p class="lead">The link may be old or mistyped. You can still check any Chrome extension here.</p>
 ${form('')}`,
-    body: `<div class="card"><p class="text"><a href="/">Go to the home page →</a> · <a href="/popular">Popular extensions →</a></p></div>`,
+    body: `<div class="card"><p class="text"><a href="/">Go to the home page →</a> · <a href="/popular">Popular extensions →</a> · <a href="${REPORT_PATH}">Popular extensions report →</a> · <a href="${INCIDENTS_PATH}">Malware incidents →</a></p></div>`,
   });
 }
 
@@ -472,9 +561,42 @@ const incidentList = (extensions) => `<ul class="ext-list">${extensions.map((e) 
     <span class="muted">${where} · ${e.id}</span></li>`;
 }).join('')}</ul>`;
 
+const WHY_BOUGHT = `
+<section class="card">
+  <h2>Why the bought ones matter</h2>
+  <p class="text">An extension that changes hands keeps its name, icon, reviews and users. Chrome installs the new owner's
+  update quietly, and nothing tells you that someone else is now behind it. People who had trusted these
+  extensions for months got the malware without doing anything.</p>
+</section>`;
+
+const WHY_UPDATED = `
+<section class="card">
+  <h2>Why trusted extensions turn</h2>
+  <p class="text">These extensions did what they promised for a long time and collected users, reviews and store badges.
+  Then an update added the malicious code. Chrome and Edge install updates quietly, so people who had trusted them
+  got it without doing anything.</p>
+</section>`;
+
+const LIST_NOTE = '<p class="muted note">Each Chrome link opens the extension\'s checker page, which shows whether it is still in the store.</p>';
+
 export function renderIncidentPage(incident) {
   const acquired = incident.extensions.filter((e) => e.acquired);
   const built = incident.extensions.filter((e) => !e.acquired);
+  const lists = acquired.length
+    ? `<section class="card">
+  <h2>Bought from their original developers (${acquired.length})</h2>
+  ${incidentList(acquired)}
+</section>
+<section class="card">
+  <h2>Built by the attackers (${built.length})</h2>
+  ${incidentList(built)}
+  ${LIST_NOTE}
+</section>`
+    : `<section class="card">
+  <h2>Extensions in the report (${built.length})</h2>
+  ${incidentList(built)}
+  ${LIST_NOTE}
+</section>`;
   const sources = incident.sources
     .map((s) => `<li><a href="${escapeHtml(s.url)}" rel="noopener">${escapeHtml(s.name)}</a></li>`).join('');
   return layout({
@@ -483,32 +605,18 @@ export function renderIncidentPage(incident) {
     canonical: incidentPath(incident),
     hero: `<h1>${escapeHtml(incident.title)}</h1>
 <p class="lead">Reported ${escapeHtml(incident.reported)}. ${escapeHtml(incident.summary)}</p>`,
-    body: `
-<section class="card">
-  <h2>Why the bought ones matter</h2>
-  <p class="text">An extension that changes hands keeps its name, icon, reviews and users. Chrome installs the new owner's
-  update quietly, and nothing tells you that someone else is now behind it. People who had trusted these
-  extensions for months got the malware without doing anything.</p>
-</section>
+    body: `${acquired.length ? WHY_BOUGHT : WHY_UPDATED}
 <section class="card">
   <h2>What to do if you have one</h2>
   <ol class="steps">
     <li>Open <strong>chrome://extensions</strong> (or <strong>edge://extensions</strong>) and remove any extension from the lists below.</li>
-    <li>If you used a crypto wallet in that browser, move your funds to a new wallet created on a clean device.
-    Don't reuse the old recovery phrase.</li>
+    ${incident.wallets ? `<li>If you used a crypto wallet in that browser, move your funds to a new wallet created on a clean device.
+    Don't reuse the old recovery phrase.</li>` : ''}
     <li>Change passwords you typed or saved in that browser, starting with email and banking, and turn on two-factor sign-in.</li>
     <li>Remove extensions you no longer use. Fewer extensions means fewer chances for this to happen again.</li>
   </ol>
 </section>
-<section class="card">
-  <h2>Bought from their original developers (${acquired.length})</h2>
-  ${incidentList(acquired)}
-</section>
-<section class="card">
-  <h2>Built by the attackers (${built.length})</h2>
-  ${incidentList(built)}
-  <p class="muted note">Each Chrome link opens the extension's checker page, which shows whether it is still in the store.</p>
-</section>
+${lists}
 <section class="card">
   <h2>Sources</h2>
   <ul>${sources}</ul>
@@ -516,6 +624,71 @@ export function renderIncidentPage(incident) {
 ${CTA}`,
   });
 }
+
+export function renderIncidentsPage(incidents) {
+  const items = incidents.map((i) => `
+  <section class="card">
+    <h2><a href="${incidentPath(i)}">${escapeHtml(i.title)}</a></h2>
+    <p class="text"><span class="muted">Reported ${escapeHtml(i.reported)} · ${i.extensions.length} extensions.</span> ${escapeHtml(i.summary)}</p>
+  </section>`).join('');
+  return layout({
+    title: 'Chrome extensions that turned malicious · Extension Guardian',
+    description: 'Published reports of Chrome and Edge extensions that were sold or updated into malware, with every extension named and what to do if you have one.',
+    canonical: INCIDENTS_PATH,
+    hero: `<h1>Extensions that turned malicious</h1>
+<p class="lead">Reports from security researchers about extensions that were sold or quietly updated into malware. Each page lists the extensions and what to do if you have one.</p>`,
+    body: `${items}${CTA}`,
+  });
+}
+
+// Questions people ask before trusting a checker, answered in plain words.
+// Keep in step with the privacy policy and the extension's README.
+const FAQ = [
+  ['What does the web checker look at?',
+    'Only the extension\'s public Chrome Web Store listing: who the developer is, whether they registered as a business, how many people use it, when it was last updated and how to contact the developer. It reads the same page you would.'],
+  ['Is this a malware scan?',
+    'No. The checker doesn\'t download or run the extension and can\'t see its code or permissions. It shows the signals in the listing that tend to come before trouble, such as an abandoned extension or a developer with no contact details.'],
+  ['What does the extension add?',
+    'Extension Guardian watches the extensions you have installed and warns you when one changes owner, asks for new permissions, disappears from the store or was installed by another program. It can also keep chosen extensions off sites such as your bank.'],
+  ['Why do sold extensions matter?',
+    'An extension keeps its name, reviews and users when it changes hands, and Chrome installs the new owner\'s updates without asking. Several malware campaigns have started this way.'],
+  ['What data does it send?',
+    'In Chrome, the extension sends only the IDs of your installed extensions to our server, which reads their public store pages. Your list and every result stay on your device. The Firefox version asks Firefox Add-ons directly and never contacts our server. We use no analytics and don\'t log IP addresses.'],
+  ['Why is a server needed at all?',
+    'Chrome doesn\'t let extensions read Chrome Web Store pages, so a small server reads the public page instead. It keeps each result for up to 6 hours so it doesn\'t ask the store again for every request.'],
+  ['Does it cost anything?',
+    'No. It is free and open source under the MIT license, with no account and no ads.'],
+];
+
+export function renderHowPage() {
+  const items = FAQ.map(([q, a]) => `
+  <section class="card faq">
+    <h2>${escapeHtml(q)}</h2>
+    <p>${escapeHtml(a)}</p>
+  </section>`).join('');
+  return layout({
+    title: 'How Extension Guardian works · Extension Guardian',
+    description: 'What the Extension Guardian checker and extension look at, what data they send, and why sold extensions matter.',
+    canonical: HOW_PATH,
+    hero: `<h1>How it works</h1>
+<p class="lead">What the checker and the extension look at, and what they send. The <a class="hero-link" href="/privacy">privacy policy</a> has the full details.</p>`,
+    body: `${items}${CTA}`,
+  });
+}
+
+// A shield on the brand green, for the browser tab and home screen.
+export const FAVICON_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><rect width="24" height="24" rx="5" fill="#1f7a4d"/><path fill="#fff" d="M12 3.5 5.5 6v5c0 4.2 2.8 7.8 6.5 9.1 3.7-1.3 6.5-4.9 6.5-9.1V6L12 3.5Z"/><path fill="none" stroke="#1f7a4d" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" d="m8.8 11.9 2.2 2.2 4.2-4.4"/></svg>`;
+
+export const MANIFEST = JSON.stringify({
+  name: 'Extension Guardian checker',
+  short_name: 'Ext. Guardian',
+  description: 'Check whether a Chrome extension is safe before you install it.',
+  start_url: '/',
+  display: 'browser',
+  background_color: '#f4f7f5',
+  theme_color: '#1f7a4d',
+  icons: [{ src: FAVICON_PATH, sizes: 'any', type: 'image/svg+xml' }],
+});
 
 export const REPORT_PATH = '/report/popular-chrome-extensions-2026';
 
@@ -566,7 +739,7 @@ export function renderReportPage(r) {
   maintained and have a named developer.</p>
   <p class="note">The risk is what happens next. Extensions get sold, and the new owner inherits the users, the reviews and
   every one of those permissions. Chrome installs the next update silently and never says that someone else is now behind it.
-  In <a href="${incidentPath(INCIDENTS[0])}">one campaign reported this year</a>, attackers bought established extensions and
+  In <a href="${incidentPath(findIncident('superior-2026'))}">one campaign reported this year</a>, attackers bought established extensions and
   turned them into password and crypto-wallet stealers.</p>
 </section>
 <section class="card">
@@ -604,7 +777,8 @@ ${CTA}`,
 }
 
 export function renderSitemap(popular) {
-  const urls = ['/', '/popular', REPORT_PATH, ...INCIDENTS.map(incidentPath), ...popular.map((e) => extensionPath(e.id, e.name))];
+  const extensions = [...popular, ...REPORT.stale].map((e) => extensionPath(e.id, e.name));
+  const urls = [...new Set(['/', '/popular', REPORT_PATH, HOW_PATH, INCIDENTS_PATH, ...INCIDENTS.map(incidentPath), '/privacy', ...extensions])];
   return `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
 ${urls.map((u) => `  <url><loc>${SITE}${u}</loc></url>`).join('\n')}
