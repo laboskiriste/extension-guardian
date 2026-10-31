@@ -1,26 +1,12 @@
 // Builds the Firefox Add-ons package from the same code. Only the manifest
-// differs: Firefox runs the background as a module script instead of a
-// service worker, and needs an add-on id and a data collection statement.
+// differs; see firefox-manifest.mjs.
 import { cpSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
+import { firefoxManifest } from './firefox-manifest.mjs';
 
 const root = new URL('..', import.meta.url).pathname;
 const out = `${root}build/firefox/`;
-const manifest = JSON.parse(readFileSync(`${root}manifest.json`, 'utf8'));
-
-delete manifest.minimum_chrome_version;
-// "Keep off on these sites" can't work in Firefox, so it never asks for tabs.
-delete manifest.optional_permissions;
-manifest.description = manifest.description.replace('the Chrome Web Store', 'the store');
-manifest.background = { scripts: ['src/background.js'], type: 'module' };
-manifest.browser_specific_settings = {
-  gecko: {
-    id: 'extension-guardian@laboskiriste',
-    strict_min_version: '140.0',
-    // Lookups go straight to addons.mozilla.org; nothing reaches the developer.
-    data_collection_permissions: { required: ['none'] },
-  },
-};
+const manifest = firefoxManifest(JSON.parse(readFileSync(`${root}manifest.json`, 'utf8')));
 
 rmSync(out, { recursive: true, force: true });
 mkdirSync(out, { recursive: true });
