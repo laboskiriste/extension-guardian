@@ -191,6 +191,91 @@ test('a missing field is not an ownership change', () => {
   assert.deepEqual(diffStoreInfo('Test', prev, { status: 'ok', developerName: null, email: 'A@alice.dev' }), []);
 });
 
+// A store page cut down to what parseStorePage reads.
+const storePage = ({ title = 'Tiny Tool', developer, offeredBy, users, updated } = {}) => [
+  `<title>${title} - Chrome Web Store</title>`,
+  users != null && `<span>${users}</span>`,
+  offeredBy && `<div>Offered by</div><div>${offeredBy}</div>`,
+  updated && `<div>Updated</div><div>${updated}</div>`,
+  developer && `<li><div>Developer</div><div><div>${developer}</div></div></li>`,
+].filter(Boolean).join('');
+
+test('a store page with no developer section still parses', () => {
+  const info = parseStorePage(storePage({ offeredBy: 'Someone', users: '120 users' }));
+  assert.equal(info.status, 'ok');
+  assert.equal(info.title, 'Tiny Tool');
+  assert.equal(info.offeredBy, 'Someone');
+  assert.equal(info.developerName, null);
+  assert.equal(info.email, null);
+  assert.equal(info.website, null);
+  assert.equal(info.trader, null);
+});
+
+test('user counts: none, zero, one and many', () => {
+  assert.equal(parseStorePage(storePage()).users, null);
+  assert.equal(parseStorePage(storePage({ users: '0 users' })).users, '0');
+  assert.equal(parseStorePage(storePage({ users: '1 user' })).users, '1');
+  assert.equal(parseStorePage(storePage({ users: '10,000,000+ users' })).users, '10,000,000+');
+});
+
+test('the update date is kept as the store shows it', () => {
+  for (const updated of ['October 21, 2026', '21 October 2026', '2026-10-21']) {
+    const info = parseStorePage(storePage({ updated }));
+    assert.equal(info.updated, updated);
+    assert.equal(new Date(Date.parse(info.updated)).getUTCFullYear(), 2026, updated);
+  }
+});
+
+test('names with HTML entities are decoded once', () => {
+  const info = parseStorePage(storePage({ title: 'Tom &amp; Jerry&#39;s Tool', developer: 'O&#x27;Brien &amp; Sons<br>1 Main St' }));
+  assert.equal(info.title, "Tom & Jerry's Tool");
+  assert.equal(info.developerName, "O'Brien & Sons");
+  assert.equal(info.developerAddress, '1 Main St');
+  assert.equal(parseStorePage(storePage({ offeredBy: 'A &amp;lt;b&amp;gt;' })).offeredBy, 'A &lt;b&gt;');
+});
+
+test('risk edge cases: zero users, no update date, unlisted', () => {
+  const zero = assessRisk(ext(), { store: store({ users: '0' }), now: NOW });
+  assert.equal(zero.reasons[0].title, 'Only 0 users');
+  assert.equal(zero.level, 'low', 'few users alone, with basic access, is low');
+  assert.equal(assessRisk(ext(FULL), { store: store({ users: '0' }), now: NOW }).level, 'watch');
+
+  const noDate = assessRisk(ext(), { store: store({ updated: null }), now: NOW });
+  assert.ok(!noDate.reasons.some((r) => /updated|maintained/i.test(r.title)));
+  const badDate = assessRisk(ext(), { store: store({ updated: 'sometime' }), now: NOW });
+  assert.deepEqual(badDate.reasons, noDate.reasons);
+
+  const unlisted = assessRisk(ext(), { store: { status: 'unlisted' }, now: NOW });
+  assert.equal(unlisted.level, 'low');
+  assert.equal(unlisted.reasons[0].title, 'Not listed on the Chrome Web Store');
+});
+
+test('a store listing with no users and no contact', () => {
+  const r = assessRisk(ext(), { store: store({ users: null, email: null, website: null, updated: null }), now: NOW });
+  assert.deepEqual(r.reasons.map((x) => x.title), ['No developer contact']);
+});
+
+test('host permission changes', () => {
+  const s = (hosts) => snapshotOf(ext({ hostPermissions: hosts }));
+  const narrow = diffSnapshots(s(['https://a.com/*']), s(['https://a.com/*', 'https://*.b.com/*', 'http://b.com/*']));
+  assert.deepEqual(narrow.map((c) => [c.type, c.severity, c.detail]), [['new_hosts', 'medium', 'b.com']]);
+  const broad = diffSnapshots(s(['https://a.com/*']), s(['*://*/*']));
+  assert.deepEqual(broad.map((c) => [c.type, c.severity]), [['new_hosts', 'high']]);
+  // Already on every site: another pattern adds nothing to worry about.
+  assert.equal(diffSnapshots(s(['<all_urls>']), s(['<all_urls>', 'https://*/*']))[0].severity, 'medium');
+  assert.deepEqual(diffSnapshots(s(['https://a.com/*', 'https://b.com/*']), s(['https://b.com/*'])), [], 'removed hosts are fine');
+  assert.deepEqual(diffSnapshots(s(['https://b.com/*', 'https://a.com/*']), s(['https://a.com/*', 'https://b.com/*'])), [], 'order does not matter');
+});
+
+test('optional permissions the user granted show up as new permissions', () => {
+  // Chrome reports granted optional permissions in the same lists, so they
+  // can't be told apart from permissions added by an update.
+  const before = snapshotOf(ext({ permissions: ['storage'] }));
+  const after = snapshotOf(ext({ permissions: ['storage', 'tabs'], hostPermissions: ['https://mail.google.com/*'] }));
+  assert.deepEqual(diffSnapshots(before, after).map((c) => c.type), ['new_permissions', 'new_hosts']);
+  assert.deepEqual(diffSnapshots(after, before), [], 'revoking them raises nothing');
+});
+
 test('removal is reported only after the extension was seen in the store', () => {
   assert.equal(diffStoreInfo('T', { status: 'ok' }, { status: 'not_found' })[0].type, 'removed_from_store');
   assert.deepEqual(diffStoreInfo('T', undefined, { status: 'not_found' }), []);

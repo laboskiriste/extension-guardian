@@ -31,14 +31,20 @@ export function edgeStorePageUrl(id) {
   return `https://microsoftedge.microsoft.com/addons/detail/${id}`;
 }
 
+// &amp; goes last, so "&amp;lt;" stays "&lt;" instead of becoming "<".
 function decode(text) {
   return text
-    .replace(/&amp;/g, '&')
     .replace(/&lt;/g, '<')
     .replace(/&gt;/g, '>')
     .replace(/&quot;/g, '"')
-    .replace(/&#39;/g, "'")
     .replace(/&nbsp;/g, ' ')
+    // Numeric entities such as &#39; and &#x27;. Code points that aren't
+    // valid characters are left as they were.
+    .replace(/&#(x[0-9a-f]+|\d+);/gi, (entity, n) => {
+      const code = n[0].toLowerCase() === 'x' ? parseInt(n.slice(1), 16) : Number(n);
+      return code > 0 && code <= 0x10ffff ? String.fromCodePoint(code) : entity;
+    })
+    .replace(/&amp;/g, '&')
     .trim();
 }
 
@@ -102,7 +108,8 @@ export function parseStorePage(html) {
     trader,
     version: detailValue(html, 'Version'),
     updated: detailValue(html, 'Updated'),
-    users: />([\d,.]+\+?) users</.exec(html)?.[1] ?? null,
+    // "1,000,000+ users", and "1 user" for the smallest listings.
+    users: />([\d,.]+\+?) users?</.exec(html)?.[1] ?? null,
     // The listing's icon, used by the web checker. Only Google's image host is accepted.
     icon: /<meta property="og:image" content="(https:\/\/lh3\.googleusercontent\.com\/[^"]+)"/.exec(html)?.[1] ?? null,
   };
