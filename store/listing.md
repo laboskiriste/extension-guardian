@@ -51,6 +51,8 @@ PRIVATE BY DESIGN
 • Your list of extensions and all results stay on your device.
 • To look up developers, only extension IDs are sent to our server – never your identity, history or browsing data.
 • No ads, no analytics, no tracking. Ever.
+
+Extension Guardian is part of Tinyward, small privacy tools with as few permissions as possible. Also from Tinyward: Unseen, which blocks email tracking pixels in Gmail.
 ```
 
 **Category**: Privacy & Security

@@ -55,6 +55,8 @@ PRIVATE BY DESIGN
 • Open source (MIT): https://github.com/laboskiriste/extension-guardian
 
 Firefox doesn't let one add-on turn off or remove another, so you do that yourself in about:addons.
+
+Extension Guardian is part of Tinyward, small privacy tools with as few permissions as possible. Also from Tinyward: Unseen, which blocks email tracking pixels in Gmail.
 ```
 
 **Categories**: Privacy & Security

@@ -132,3 +132,5 @@ dd { margin: 0; overflow-wrap: anywhere; }
 .empty { padding: 12px 0; }
 
 footer { margin-top: 14px; color: var(--muted); font-size: 11px; text-align: center; }
+.family { margin: 6px 0 0; }
+.family a.link { font-weight: 500; }

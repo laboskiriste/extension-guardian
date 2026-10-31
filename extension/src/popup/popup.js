@@ -1,6 +1,7 @@
 import { assessRisk, isFromStore, updateSource } from '../lib/risk.js';
 import { edgeStorePageUrl, reviewPageUrl, storePageUrl } from '../lib/store.js';
 import { IS_FIREFOX, STORE } from '../lib/platform.js';
+import '../lib/family.js';
 
 const app = document.getElementById('app');
 const inTab = new URLSearchParams(location.search).get('view') === 'tab';
@@ -238,6 +239,17 @@ function extensionRow({ ext, store, risk }) {
   );
 }
 
+// One line in the footer pointing to the other Tinyward extensions. Plain
+// links from family.js: nothing is fetched or tracked.
+function moreFromFamily() {
+  const others = globalThis.TINYWARD.extensions.filter((e) => e.id !== 'extension-guardian');
+  if (!others.length) return null;
+  return h('p', { class: 'family' }, `More from ${globalThis.TINYWARD.family}: `,
+    others.map((e, i) => [i > 0 && ' · ', h('a', {
+      class: 'link', href: (IS_FIREFOX ? e.firefox : e.chrome) ?? e.website, target: '_blank', rel: 'noopener', title: e.short,
+    }, e.name.split(':')[0])]));
+}
+
 function render() {
   const unseenFirst = [...data.alerts].sort((a, b) => b.at - a.at);
   // Goes through h() so a missing section is skipped instead of printed as "false".
@@ -254,7 +266,8 @@ function render() {
     ),
     h('footer', {},
       data.storeError && h('p', { class: 'warn' }, `Could not reach ${IS_FIREFOX ? STORE.the : 'the Guardian server'}, so developer checks are paused.`),
-      `Store last checked ${timeAgo(data.lastStoreCheckAt)} · Only extension IDs leave your device`),
+      `Store last checked ${timeAgo(data.lastStoreCheckAt)} · Only extension IDs leave your device`,
+      moreFromFamily()),
   ).childNodes);
 }
 

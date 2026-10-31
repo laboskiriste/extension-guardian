@@ -11,6 +11,8 @@ Not ready to install anything? **[Check a single extension on the web](https://a
 
 ![Extension Guardian popup](store/screenshot-1.png)
 
+Part of **Tinyward**, small privacy tools with as few permissions as possible. Also from Tinyward: [Unseen](https://github.com/laboskiriste/unseen), which blocks email tracking pixels in Gmail.
+
 ## Why
 
 Extensions get sold. The new owner pushes an update, Chrome installs it silently, and a tool you have trusted for years starts injecting ads or collecting browsing data. Chrome doesn't tell you when the developer behind an extension changes. Extension Guardian does.
