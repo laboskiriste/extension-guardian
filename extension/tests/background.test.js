@@ -11,10 +11,19 @@ let installed = [];
 let storePages = {};
 let badge = '';
 const tabs = [];
+let activeUrl = null;
+let hasTabs = false;
 
 globalThis.chrome = {
   runtime: { id: 'self', getURL: (p) => `chrome-extension://self/${p}`, onInstalled: on('installed'), onStartup: on('startup'), onMessage: on('message') },
-  management: { getAll: async () => installed, onInstalled: on('extInstalled'), onUninstalled: on('extUninstalled') },
+  management: {
+    getAll: async () => installed,
+    setEnabled: async (id, enabled) => { installed.find((e) => e.id === id).enabled = enabled; },
+    onInstalled: on('extInstalled'),
+    onUninstalled: on('extUninstalled'),
+  },
+  permissions: { contains: async () => hasTabs, onAdded: on('permAdded') },
+  windows: { onFocusChanged: on('focus') },
   storage: {
     local: {
       get: async (defaults) => structuredClone({ ...defaults, ...storage }),
@@ -24,7 +33,12 @@ globalThis.chrome = {
   alarms: { get: async () => null, create: () => {}, onAlarm: on('alarm') },
   action: { setBadgeText: async ({ text }) => { badge = text; }, setBadgeBackgroundColor: async () => {} },
   notifications: { create: (id, opts) => notifications.push(opts), onClicked: on('notifClick'), clear: () => {} },
-  tabs: { create: ({ url }) => tabs.push(url) },
+  tabs: {
+    create: ({ url }) => tabs.push(url),
+    query: async () => (activeUrl ? [{ url: activeUrl, active: true }] : []),
+    onActivated: on('tabActivated'),
+    onUpdated: on('tabUpdated'),
+  },
 };
 
 const page = (dev) => `<title>X - Chrome Web Store</title><li><div class="a">Developer</div><div><div class="b">${dev}<br>Street 1</div></div></li>`;
@@ -107,4 +121,47 @@ test('markSeen clears the badge and dismiss removes an alert', async () => {
   const count = storage.alerts.length;
   await send({ type: 'dismiss', id: storage.alerts[0].id });
   assert.equal(storage.alerts.length, count - 1);
+});
+
+test('keep off on these sites: off on the site, back on after leaving', async () => {
+  installed = [ext(A, { mayDisable: true }), ext(B, { mayDisable: true })];
+  activeUrl = 'https://login.mybank.com/start';
+  hasTabs = false;
+  await send({ type: 'setSites', extId: A, sites: ['mybank.com'] });
+  assert.equal(installed[0].enabled, true, 'does nothing without the tabs permission');
+
+  hasTabs = true;
+  listeners.permAdded({ permissions: ['tabs'] });
+  await send({ type: 'markSeen' }); // waits for the queued check
+  assert.equal(installed[0].enabled, false);
+  assert.equal(installed[1].enabled, true, 'other extensions are untouched');
+  assert.deepEqual(storage.pausedBySites, [A]);
+
+  activeUrl = 'https://news.example.com/';
+  listeners.tabActivated({ tabId: 2 });
+  await send({ type: 'markSeen' });
+  assert.equal(installed[0].enabled, true);
+  assert.deepEqual(storage.pausedBySites, []);
+});
+
+test('keep off on these sites never turns on an extension the user turned off', async () => {
+  installed = [ext(A, { mayDisable: true }), ext(B, { mayDisable: true, enabled: false })];
+  await send({ type: 'setSites', extId: B, sites: ['mybank.com'] });
+  activeUrl = 'https://mybank.com/';
+  listeners.tabUpdated(1, { url: activeUrl }, { active: true });
+  await send({ type: 'markSeen' });
+  activeUrl = 'https://example.com/';
+  listeners.tabUpdated(1, { url: activeUrl }, { active: true });
+  await send({ type: 'markSeen' });
+  assert.equal(installed[1].enabled, false);
+});
+
+test('removing the last site turns the extension back on', async () => {
+  installed = [ext(A, { mayDisable: true })];
+  activeUrl = 'https://mybank.com/';
+  await send({ type: 'setSites', extId: A, sites: ['mybank.com'] });
+  assert.equal(installed[0].enabled, false);
+  await send({ type: 'setSites', extId: A, sites: [] });
+  assert.equal(installed[0].enabled, true);
+  assert.equal(storage.siteRules[A], undefined);
 });

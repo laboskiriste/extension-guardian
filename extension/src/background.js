@@ -2,6 +2,7 @@ import { assessRisk, isFromStore } from './lib/risk.js';
 import { snapshotOf, diffSnapshots, diffStoreInfo } from './lib/changes.js';
 import { fetchStoreInfoBatch } from './lib/store.js';
 import { IS_FIREFOX } from './lib/platform.js';
+import { planSiteRules } from './lib/sites.js';
 
 const STORE_CHECK_ALARM = 'store-check';
 const STORE_CHECK_MINUTES = 6 * 60;
@@ -144,9 +145,26 @@ async function checkStore(onlyIds = null) {
 
 async function forget(id) {
   const { snapshots, storeInfo } = await load();
+  const { siteRules } = await chrome.storage.local.get({ siteRules: {} });
   delete snapshots[id];
   delete storeInfo[id];
-  await chrome.storage.local.set({ snapshots, storeInfo });
+  delete siteRules[id];
+  await chrome.storage.local.set({ snapshots, storeInfo, siteRules });
+}
+
+// "Keep off on these sites". Reading the active tab's address needs the
+// optional `tabs` permission, which the user grants when adding a first site.
+// Firefox only lets an add-on turn off themes, so the feature is Chrome-only.
+async function applySiteRules() {
+  if (IS_FIREFOX || !(await chrome.permissions.contains({ permissions: ['tabs'] }))) return;
+  const [tab] = await chrome.tabs.query({ active: true, lastFocusedWindow: true });
+  // No address (a devtools window, a closed window): leave things as they are.
+  if (!tab?.url) return;
+  const { siteRules, pausedBySites } = await chrome.storage.local.get({ siteRules: {}, pausedBySites: [] });
+  const plan = planSiteRules({ url: tab.url, rules: siteRules, exts: await installedExtensions(), paused: pausedBySites });
+  for (const id of plan.disable) await chrome.management.setEnabled(id, false).catch(console.warn);
+  for (const id of plan.enable) await chrome.management.setEnabled(id, true).catch(console.warn);
+  await chrome.storage.local.set({ pausedBySites: plan.paused });
 }
 
 async function ensureAlarm() {
@@ -207,6 +225,13 @@ const handlers = {
     await chrome.storage.local.set({ alerts: next });
     await updateBadge(next);
   },
+  async setSites({ extId, sites }) {
+    const { siteRules } = await chrome.storage.local.get({ siteRules: {} });
+    if (sites.length) siteRules[extId] = sites;
+    else delete siteRules[extId];
+    await chrome.storage.local.set({ siteRules });
+    await applySiteRules();
+  },
   // The user has reviewed the new owner and wants to keep the extension.
   async trust({ extId }) {
     const { storeInfo } = await load();
@@ -214,6 +239,14 @@ const handlers = {
     await chrome.storage.local.set({ storeInfo });
   },
 };
+
+if (!IS_FIREFOX) {
+  const siteCheck = () => serial(applySiteRules);
+  chrome.tabs.onActivated.addListener(siteCheck);
+  chrome.tabs.onUpdated.addListener((_id, change, tab) => { if (change.url && tab.active) siteCheck(); });
+  chrome.windows.onFocusChanged.addListener(siteCheck);
+  chrome.permissions.onAdded.addListener(siteCheck);
+}
 
 chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
   const handler = handlers[msg?.type];

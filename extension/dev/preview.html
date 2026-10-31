@@ -81,6 +81,10 @@
           if (msg.type === 'dismiss') store.alerts = store.alerts.filter((a) => a.id !== msg.id);
           if (msg.type === 'trust') store.storeInfo[msg.extId].ownershipChanged = null;
           if (msg.type === 'scan') await new Promise((r) => setTimeout(r, 800));
+          if (msg.type === 'setSites') {
+            store.siteRules = { ...store.siteRules, [msg.extId]: msg.sites };
+            if (!msg.sites.length) delete store.siteRules[msg.extId];
+          }
           return { ok: true };
         },
       },
@@ -97,7 +101,13 @@
         onChanged: { addListener: () => {} },
       },
       tabs: { create: () => {} },
+      // ?tabs: as if the user already allowed Guardian to see the active tab.
+      permissions: {
+        contains: async () => hasTabs,
+        request: async () => { hasTabs = hasTabs || confirm('Allow "Read your browsing history"?'); return hasTabs; },
+      },
     };
+    let hasTabs = new URLSearchParams(location.search).has('tabs');
   </script>
   <script type="module" src="../src/popup/popup.js"></script>
   <script type="module">

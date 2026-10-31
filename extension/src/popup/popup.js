@@ -1,6 +1,7 @@
 import { assessRisk, isFromStore, updateSource } from '../lib/risk.js';
 import { edgeStorePageUrl, reviewPageUrl, storePageUrl } from '../lib/store.js';
 import { IS_FIREFOX, STORE } from '../lib/platform.js';
+import { normalizeSite } from '../lib/sites.js';
 import '../lib/family.js';
 
 const app = document.getElementById('app');
@@ -8,6 +9,9 @@ const inTab = new URLSearchParams(location.search).get('view') === 'tab';
 if (inTab) document.body.classList.add('tab');
 
 const expanded = new Set();
+// What the user is typing in each "Keep off on these sites" box, so a
+// re-render doesn't wipe it.
+const siteDrafts = {};
 let busy = false;
 let data = { exts: [], storeInfo: {}, alerts: [], lastStoreCheckAt: null, storeError: null };
 
@@ -47,8 +51,10 @@ async function load() {
     chrome.management.getAll(),
     chrome.storage.local.get({
       storeInfo: {}, alerts: [], lastStoreCheckAt: null, storeError: null, installedAt: null, ratePrompt: null,
+      siteRules: {}, pausedBySites: [],
     }),
   ]);
+  const hasTabs = !IS_FIREFOX && await chrome.permissions.contains({ permissions: ['tabs'] });
   const exts = all
     .filter((e) => e.type === 'extension' && e.id !== chrome.runtime.id)
     .map((ext) => {
@@ -62,7 +68,7 @@ async function load() {
       || (b.risk.score - a.risk.score)
       || (b.risk.access.score - a.risk.access.score)
       || a.ext.name.localeCompare(b.ext.name));
-  data = { exts, ...stored };
+  data = { exts, ...stored, hasTabs };
 }
 
 function send(type, extra = {}) {
@@ -196,6 +202,46 @@ function riskReasons(ext, store, risk) {
   return h('ul', { class: 'reasons signals' }, items);
 }
 
+// Asks for the tabs permission straight from the click: Chrome only shows the
+// prompt during a user action, and the popup may close while it's open.
+function askForTabs() {
+  return chrome.permissions.request({ permissions: ['tabs'] }).catch(() => false);
+}
+
+function keepOffSites(ext) {
+  const sites = data.siteRules[ext.id] ?? [];
+  const save = (next) => send('setSites', { extId: ext.id, sites: next });
+  const add = async (event) => {
+    event.preventDefault();
+    const site = normalizeSite(siteDrafts[ext.id]);
+    if (!site) return;
+    const granted = askForTabs();
+    delete siteDrafts[ext.id];
+    if (!sites.includes(site)) await save([...sites, site]);
+    await granted;
+    refresh();
+  };
+  return h('div', { class: 'sites' },
+    h('h3', {}, 'Keep off on these sites'),
+    h('p', { class: 'muted' }, `Guardian turns ${ext.name} off while one of these sites is in the active tab, and back on when you leave. Reload a page that was already open. The address of the active tab never leaves your device.`),
+    sites.length > 0 && h('ul', { class: 'chips' }, sites.map((site) => h('li', {},
+      site,
+      h('button', { class: 'chip-x', title: `Remove ${site}`, 'aria-label': `Remove ${site}`, onclick: async () => { await save(sites.filter((s) => s !== site)); refresh(); } }, '×'),
+    ))),
+    sites.length > 0 && !data.hasTabs && h('p', { class: 'warn' },
+      'Not active yet: Guardian needs to see the address of the active tab. ',
+      h('button', { class: 'link', onclick: async () => { await askForTabs(); refresh(); } }, 'Allow'),
+    ),
+    h('form', { class: 'site-form', onsubmit: add },
+      h('input', {
+        type: 'text', placeholder: 'mybank.com', 'aria-label': 'Site to keep it off on', value: siteDrafts[ext.id] ?? '',
+        oninput: (e) => { siteDrafts[ext.id] = e.target.value; },
+      }),
+      h('button', { class: 'secondary', type: 'submit' }, 'Add'),
+    ),
+  );
+}
+
 function extensionRow({ ext, store, risk }) {
   const open = expanded.has(ext.id);
   const toggle = () => { open ? expanded.delete(ext.id) : expanded.add(ext.id); render(); };
@@ -204,7 +250,8 @@ function extensionRow({ ext, store, risk }) {
       iconFor(ext),
       h('div', { class: 'ext-name' },
         h('strong', {}, ext.name),
-        h('span', {}, `v${ext.version} · ${ACCESS_LABEL[risk.access.level]}${ext.enabled ? '' : ' · turned off'}`),
+        h('span', {}, `v${ext.version} · ${ACCESS_LABEL[risk.access.level]}${
+          data.pausedBySites.includes(ext.id) ? ' · off on this site' : ext.enabled ? '' : ' · turned off'}`),
       ),
       h('span', { class: `pill ${risk.level}` }, RISK_LABEL[risk.level]),
     ),
@@ -220,6 +267,7 @@ function extensionRow({ ext, store, risk }) {
         : h('p', { class: 'muted' }, 'Nothing sensitive. It only uses basic permissions.'),
       h('h3', {}, 'Who makes it'),
       storeDetails(ext, store),
+      !IS_FIREFOX && ext.mayDisable && keepOffSites(ext),
       h('div', { class: 'actions' },
         // Firefox doesn't let one add-on turn off or remove another.
         !IS_FIREFOX && ext.mayDisable && h('button', {

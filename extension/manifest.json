@@ -6,6 +6,7 @@
   "homepage_url": "https://app.extensionguardian.workers.dev",
   "minimum_chrome_version": "116",
   "permissions": ["management", "storage", "alarms", "notifications"],
+  "optional_permissions": ["tabs"],
   "background": {
     "service_worker": "src/background.js",
     "type": "module"

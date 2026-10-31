@@ -9,6 +9,8 @@ const out = `${root}build/firefox/`;
 const manifest = JSON.parse(readFileSync(`${root}manifest.json`, 'utf8'));
 
 delete manifest.minimum_chrome_version;
+// "Keep off on these sites" can't work in Firefox, so it never asks for tabs.
+delete manifest.optional_permissions;
 manifest.description = manifest.description.replace('the Chrome Web Store', 'the store');
 manifest.background = { scripts: ['src/background.js'], type: 'module' };
 manifest.browser_specific_settings = {
