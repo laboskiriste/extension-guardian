@@ -50,7 +50,11 @@ const fakeStore = async (url) => {
   const html = storePages[id];
   return html ? new Response(html) : new Response('', { status: 404 });
 };
-globalThis.fetch = (url) => handleRequest(new Request(url), { fetchImpl: fakeStore });
+const serverCalls = [];
+globalThis.fetch = (url) => {
+  serverCalls.push(url);
+  return handleRequest(new Request(url), { fetchImpl: fakeStore });
+};
 
 await import('../src/background.js');
 
@@ -258,6 +262,51 @@ test('a scan before any baseline only records one', async () => {
   installed = [sideloaded, ext(C, { installType: 'sideload', updateUrl: 'https://evil.example/update.xml' })];
   await send({ type: 'scan' });
   assert.deepEqual(storage.alerts.map((a) => [a.extId, a.type]), [[C, 'installed']]);
+});
+
+test('a store page that flickers does not repeat the alert', async () => {
+  clearStorage();
+  installed = [ext(A), ext(B), ext(C)];
+  storePages = { [A]: page('Alice'), [B]: page('Bob'), [C]: page('Carol') };
+  await send({ type: 'scan' });
+  const before = notifications.length;
+  for (const present of [false, true, false, true, false]) {
+    if (present) storePages[A] = page('Alice');
+    else delete storePages[A];
+    await send({ type: 'scan' });
+  }
+  assert.equal(storage.alerts.filter((a) => a.type === 'removed_from_store').length, 1);
+  assert.equal(notifications.length, before + 1, 'one notification');
+});
+
+test('a burst of updates makes one scan and one server call', async () => {
+  installed = [ext(A), ext(B), ext(C)];
+  storePages = { [A]: page('Alice'), [B]: page('Bob'), [C]: page('Carol') };
+  await settle();
+  serverCalls.length = 0;
+  for (const e of installed) listeners.extInstalled(e);
+  await settle();
+  assert.equal(serverCalls.length, 1);
+  assert.match(serverCalls[0], new RegExp(`ids=${A},${B},${C}$`));
+
+  serverCalls.length = 0;
+  const scans = [send({ type: 'scan' }), send({ type: 'scan' })];
+  listeners.alarm({ name: 'store-check' });
+  await Promise.all(scans);
+  assert.equal(serverCalls.length, 1, 'two "Check now" and the alarm share one call');
+});
+
+test('data about extensions uninstalled while Guardian was off is cleaned up', async () => {
+  await send({ type: 'setSites', extId: B, sites: ['mybank.com'] });
+  assert.ok(storage.alerts.some((a) => a.extId === A));
+  installed = [ext(C)];
+  listeners.startup();
+  await settle();
+  assert.deepEqual(Object.keys(storage.storeInfo), [C]);
+  assert.deepEqual(Object.keys(storage.snapshots), [C]);
+  assert.deepEqual(storage.siteRules, {});
+  assert.deepEqual(storage.alerts, []);
+  assert.equal(badge, '');
 });
 
 test('the first-run scan runs before a scan sent right after install', async () => {
