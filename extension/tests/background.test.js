@@ -165,3 +165,39 @@ test('removing the last site turns the extension back on', async () => {
   assert.equal(installed[0].enabled, true);
   assert.equal(storage.siteRules[A], undefined);
 });
+
+const pageWithContact = (dev, site, email) => `<title>X - Chrome Web Store</title><li><div class="a">Developer</div><div><div class="b">${dev}<br>Street 1</div><a href="https://${site}/">Website</a><details>${email}</details></div></li>`;
+const clearStorage = () => { for (const key of Object.keys(storage)) delete storage[key]; };
+
+test('two alerts made at once get different ids', async () => {
+  installed = [ext(A)];
+  storePages = { [A]: pageWithContact('Alice', 'alice.dev', 'a@alice.dev') };
+  await send({ type: 'scan' });
+  storePages = { [A]: pageWithContact('Alice', 'other.example', 'x@other.example') };
+  await send({ type: 'scan' });
+  const contact = storage.alerts.filter((a) => a.extId === A && a.type === 'contact_changed');
+  assert.equal(contact.length, 2);
+  assert.notEqual(contact[0].id, contact[1].id);
+  await send({ type: 'dismiss', id: contact[0].id });
+  assert.ok(storage.alerts.some((a) => a.id === contact[1].id), 'dismissing one keeps the other');
+});
+
+test('a scan before any baseline only records one', async () => {
+  clearStorage();
+  const sideloaded = ext(B, { installType: 'sideload', updateUrl: 'https://evil.example/update.xml' });
+  installed = [sideloaded];
+  await send({ type: 'scan' });
+  assert.deepEqual(storage.alerts ?? [], [], 'no "new extension" alerts for what was already there');
+  installed = [sideloaded, ext(C, { installType: 'sideload', updateUrl: 'https://evil.example/update.xml' })];
+  await send({ type: 'scan' });
+  assert.deepEqual(storage.alerts.map((a) => [a.extId, a.type]), [[C, 'installed']]);
+});
+
+test('the first-run scan runs before a scan sent right after install', async () => {
+  clearStorage();
+  installed = [ext(D, { installType: 'sideload', updateUrl: 'https://evil.example/update.xml' })];
+  listeners.installed({ reason: 'install' });
+  await send({ type: 'scan' });
+  assert.deepEqual(storage.alerts ?? [], []);
+  assert.ok(storage.installedAt);
+});

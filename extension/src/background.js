@@ -25,10 +25,13 @@ async function installedExtensions() {
   return all.filter((e) => e.type === 'extension' && e.id !== chrome.runtime.id);
 }
 
+// Two alerts of the same type can be made in the same millisecond (a new
+// email and a new website), so ids also carry a counter.
+let alertCount = 0;
 function makeAlert(ext, change) {
   return {
     ...change,
-    id: `${ext.id}:${change.type}:${Date.now()}`,
+    id: `${ext.id}:${change.type}:${Date.now()}:${alertCount++}`,
     extId: ext.id,
     extName: ext.name,
     at: Date.now(),
@@ -61,9 +64,13 @@ async function addAlerts(fresh) {
 }
 
 // Compares installed extensions with what we saw last time.
-// With `baseline`, it only records the current state (first run).
+// With `baseline`, it only records the current state (first run). A scan
+// that runs before any baseline exists also counts as one, so a check that
+// sneaks in ahead of the first-run scan doesn't flag every extension as new.
 async function scanInstalled({ baseline = false } = {}) {
   const { snapshots, storeInfo } = await load();
+  const { lastScanAt } = await chrome.storage.local.get({ lastScanAt: null });
+  if (!lastScanAt) baseline = true;
   const exts = await installedExtensions();
   const next = {};
   const fresh = [];
@@ -167,17 +174,23 @@ async function applySiteRules() {
   await chrome.storage.local.set({ pausedBySites: plan.paused });
 }
 
+// onInstalled and onStartup both call this. Chrome keeps alarms across
+// restarts, so it only creates one when it is missing.
 async function ensureAlarm() {
   if (!(await chrome.alarms.get(STORE_CHECK_ALARM))) {
-    chrome.alarms.create(STORE_CHECK_ALARM, { delayInMinutes: 1, periodInMinutes: STORE_CHECK_MINUTES });
+    await chrome.alarms.create(STORE_CHECK_ALARM, { delayInMinutes: 1, periodInMinutes: STORE_CHECK_MINUTES });
   }
 }
 
-chrome.runtime.onInstalled.addListener(async ({ reason }) => {
+// Work is queued right away, before any await, so nothing else (a "Check now"
+// from the popup, an extension update) can run ahead of the first-run scan.
+chrome.runtime.onInstalled.addListener(({ reason }) => {
   ensureAlarm();
   // When the popup may first ask for a rating. Users updating from 0.1.0 start counting now.
-  const { installedAt } = await chrome.storage.local.get('installedAt');
-  if (!installedAt) await chrome.storage.local.set({ installedAt: Date.now() });
+  serial(async () => {
+    const { installedAt } = await chrome.storage.local.get('installedAt');
+    if (!installedAt) await chrome.storage.local.set({ installedAt: Date.now() });
+  });
   if (reason === 'install') {
     chrome.tabs.create({ url: chrome.runtime.getURL('src/welcome/welcome.html') });
     serial(() => scanInstalled({ baseline: true }));
