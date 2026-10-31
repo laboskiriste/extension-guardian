@@ -161,6 +161,7 @@ chrome.runtime.onInstalled.addListener(async ({ reason }) => {
   const { installedAt } = await chrome.storage.local.get('installedAt');
   if (!installedAt) await chrome.storage.local.set({ installedAt: Date.now() });
   if (reason === 'install') {
+    chrome.tabs.create({ url: chrome.runtime.getURL('src/welcome/welcome.html') });
     serial(() => scanInstalled({ baseline: true }));
     serial(() => checkStore());
   }

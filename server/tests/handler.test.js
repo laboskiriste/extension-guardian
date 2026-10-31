@@ -158,3 +158,27 @@ test('pages carry link previews', async () => {
   assert.equal(img.headers.get('Content-Type'), 'image/png');
   assert.deepEqual([...new Uint8Array(await img.arrayBuffer()).slice(1, 4)], [80, 78, 71]);
 });
+
+test('every response carries security headers', async () => {
+  for (const path of ['/', '/privacy', `/v1/store?ids=${DARK}`, '/og/default.png']) {
+    const res = await get(path);
+    assert.match(res.headers.get('Content-Security-Policy'), /default-src 'none'/, path);
+    assert.equal(res.headers.get('X-Content-Type-Options'), 'nosniff', path);
+    assert.equal(res.headers.get('X-Frame-Options'), 'DENY', path);
+  }
+});
+
+test('unknown pages get an HTML 404, unknown API paths stay JSON', async () => {
+  const page = await get('/no-such-page');
+  assert.equal(page.status, 404);
+  assert.match(await page.text(), /<h1>Page not found<\/h1>/);
+  const api = await get('/v1/nope');
+  assert.equal(api.status, 404);
+  assert.deepEqual(await api.json(), { error: 'not found' });
+});
+
+test('the site links to the rest of Tinyward', async () => {
+  const home = await (await get('/')).text();
+  assert.match(home, /Also from Tinyward: Unseen/);
+  assert.match(home, /A Tinyward project/);
+});

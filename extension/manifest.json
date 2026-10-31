@@ -3,6 +3,7 @@
   "name": "Extension Guardian",
   "version": "0.1.3",
   "description": "Warns you when an extension is risky, changes owner, gains new permissions or disappears from the Chrome Web Store.",
+  "homepage_url": "https://app.extensionguardian.workers.dev",
   "minimum_chrome_version": "116",
   "permissions": ["management", "storage", "alarms", "notifications"],
   "background": {

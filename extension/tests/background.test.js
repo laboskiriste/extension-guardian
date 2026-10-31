@@ -10,6 +10,7 @@ const notifications = [];
 let installed = [];
 let storePages = {};
 let badge = '';
+const tabs = [];
 
 globalThis.chrome = {
   runtime: { id: 'self', getURL: (p) => `chrome-extension://self/${p}`, onInstalled: on('installed'), onStartup: on('startup'), onMessage: on('message') },
@@ -23,7 +24,7 @@ globalThis.chrome = {
   alarms: { get: async () => null, create: () => {}, onAlarm: on('alarm') },
   action: { setBadgeText: async ({ text }) => { badge = text; }, setBadgeBackgroundColor: async () => {} },
   notifications: { create: (id, opts) => notifications.push(opts), onClicked: on('notifClick'), clear: () => {} },
-  tabs: { create: () => {} },
+  tabs: { create: ({ url }) => tabs.push(url) },
 };
 
 const page = (dev) => `<title>X - Chrome Web Store</title><li><div class="a">Developer</div><div><div class="b">${dev}<br>Street 1</div></div></li>`;
@@ -51,6 +52,13 @@ test('first install records a baseline without alerts', async () => {
   await send({ type: 'scan' });
   assert.deepEqual(storage.alerts ?? [], []);
   assert.equal(storage.storeInfo[A].developerName, 'Alice');
+  assert.deepEqual(tabs, ['chrome-extension://self/src/welcome/welcome.html']);
+});
+
+test('an update does not open the welcome page again', async () => {
+  listeners.installed({ reason: 'update' });
+  await send({ type: 'scan' });
+  assert.equal(tabs.length, 1);
 });
 
 test('an update that adds permissions raises alerts and a badge', async () => {

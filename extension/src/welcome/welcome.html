@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Welcome to Extension Guardian</title>
+  <link rel="stylesheet" href="welcome.css">
+</head>
+<body>
+  <main>
+    <header>
+      <img src="../../icons/icon128.png" alt="" width="64" height="64">
+      <h1>Extension Guardian is watching your extensions</h1>
+    </header>
+
+    <section>
+      <h2>What happens now</h2>
+      <p>It has listed the extensions you have and noted who makes each one. From now on it checks them every 6 hours and warns you when one:</p>
+      <ul>
+        <li>changes owner, the most common sign that it was sold,</li>
+        <li>asks for new permissions in an update,</li>
+        <li>disappears from its store, which often means it was taken down as malware.</li>
+      </ul>
+      <p>You don't need to do anything else. Most days you won't hear from it at all.</p>
+    </section>
+
+    <section>
+      <h2>Pin it to your toolbar</h2>
+      <p>Open the Extensions menu (the puzzle-piece icon next to the address bar) and pin Extension Guardian. The icon then shows a badge when something needs your attention.</p>
+    </section>
+
+    <section>
+      <h2>Your privacy</h2>
+      <p>Your list of extensions and every result stay on your device. To look up developers, only extension IDs leave your browser. No ads, no analytics, no account. The code is open source.</p>
+    </section>
+
+    <section id="family" hidden>
+      <h2>More from <span id="family-name"></span></h2>
+      <ul id="family-list" class="family"></ul>
+    </section>
+  </main>
+  <script src="../lib/family.js"></script>
+  <script src="welcome.js"></script>
+</body>
+</html>

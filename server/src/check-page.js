@@ -7,6 +7,7 @@ import { REPORT } from './report-data.js';
 
 const STORE_LINK = 'https://chromewebstore.google.com/detail/extension-guardian/mpceklcidiadoneogfmpkjpadihmlcjd';
 const GITHUB_LINK = 'https://github.com/laboskiriste/extension-guardian';
+const UNSEEN_LINK = 'https://laboskiriste.github.io/unseen/';
 const DAY = 24 * 60 * 60 * 1000;
 
 export function extractId(input) {
@@ -258,6 +259,7 @@ const STYLE = `
   .feature h3 { margin: 14px 0 6px; font-size: 18px; }
   .feature p { margin: 0; color: var(--muted); font-size: 15px; }
   .feature-cta { display: flex; flex-direction: column; align-items: center; gap: 10px; margin: 28px 0 0; font-size: 14px; }
+  .sibling { margin-top: 28px; }
   .button.big { padding: 14px 28px; font-size: 17px; border-radius: 12px; box-shadow: 0 6px 18px color-mix(in srgb, var(--accent) 35%, transparent); }
   .more { margin: 14px 4px 0; }
   .alert { background: var(--bad-soft); border-color: color-mix(in srgb, var(--bad) 35%, var(--line)); }
@@ -342,7 +344,8 @@ ${body}
 </main>
 <footer class="${wrap}">
   <a href="${STORE_LINK}">Extension Guardian</a> · <a href="/popular">Popular extensions</a> · <a href="${REPORT_PATH}">Popular extensions report</a> · <a href="${incidentPath(INCIDENTS[0])}">Latest incident</a> · <a href="${GITHUB_LINK}">Source</a> · <a href="/privacy">Privacy</a><br>
-  Based only on the public Chrome Web Store listing. Not a malware scan.
+  Based only on the public Chrome Web Store listing. Not a malware scan.<br>
+  A Tinyward project. Also from Tinyward: <a href="${UNSEEN_LINK}">Unseen</a>, which blocks email tracking pixels in Gmail.
 </footer>
 </body>
 </html>`;
@@ -386,6 +389,10 @@ const FEATURES = `
     <div class="feature">${icon('gone')}<h3>Pulled from the store</h3><p>Google removes malware. If one you have disappears, you hear about it the same day.</p></div>
   </div>
   <p class="feature-cta"><a class="button big" href="${STORE_LINK}" rel="noopener">Add to Chrome, it's free</a><span class="muted">Open source · No account · Your list stays on your device</span></p>
+</section>
+<section class="card sibling">
+  <h2>Also from Tinyward: Unseen</h2>
+  <p class="text">Newsletters hide a tiny image that tells the sender when you open their email. Unseen blocks it in Gmail, with no access to any other site. <a href="${UNSEEN_LINK}">Learn more →</a></p>
 </section>`;
 
 const reportTeaser = () => `
@@ -430,6 +437,17 @@ ${FEATURES}`
     hero,
     body,
     wide: home,
+  });
+}
+
+export function renderNotFoundPage() {
+  return layout({
+    title: 'Page not found · Extension Guardian',
+    description: 'This page does not exist.',
+    hero: `<h1>Page not found</h1>
+<p class="lead">The link may be old or mistyped. You can still check any Chrome extension here.</p>
+${form('')}`,
+    body: `<div class="card"><p class="text"><a href="/">Go to the home page →</a> · <a href="/popular">Popular extensions →</a></p></div>`,
   });
 }
 

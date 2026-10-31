@@ -1,0 +1,20 @@
+name: Bug
+description: Something in the extension or the web checker doesn't work.
+labels: [bug]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened?
+      description: What you did, what you expected, and what you saw instead.
+    validations:
+      required: true
+  - type: input
+    id: where
+    attributes:
+      label: Where?
+      placeholder: Extension popup, web checker page, report ...
+  - type: input
+    id: browser
+    attributes:
+      label: Browser and version

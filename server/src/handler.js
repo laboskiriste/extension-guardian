@@ -5,7 +5,7 @@
 import { parseStorePage } from '../../extension/src/lib/store.js';
 import { PRIVACY_HTML } from './privacy.js';
 import {
-  extractId, extensionPath, renderCheckPage, renderIncidentPage, renderPopularPage, renderReportPage, renderSitemap, REPORT_PATH, OG_DEFAULT_PATH, OG_REPORT_PATH, ROBOTS,
+  extractId, extensionPath, renderCheckPage, renderIncidentPage, renderNotFoundPage, renderPopularPage, renderReportPage, renderSitemap, REPORT_PATH, OG_DEFAULT_PATH, OG_REPORT_PATH, ROBOTS,
 } from './check-page.js';
 import { findIncident } from './incidents.js';
 import { POPULAR } from './popular.js';
@@ -109,7 +109,22 @@ async function checkerPage(url, { fetchImpl, cache }) {
   return null;
 }
 
-export async function handleRequest(request, { fetchImpl = fetch, cache = null } = {}) {
+// The site has no scripts, so the policy allows none. Inline styles are used
+// throughout; store icons come from Google's image host.
+const SECURITY_HEADERS = {
+  'Content-Security-Policy': "default-src 'none'; style-src 'unsafe-inline'; img-src 'self' https://lh3.googleusercontent.com; form-action 'self'; base-uri 'none'; frame-ancestors 'none'",
+  'X-Content-Type-Options': 'nosniff',
+  'Referrer-Policy': 'strict-origin-when-cross-origin',
+  'X-Frame-Options': 'DENY',
+};
+
+export async function handleRequest(request, options) {
+  const response = await route(request, options);
+  for (const [name, value] of Object.entries(SECURITY_HEADERS)) response.headers.set(name, value);
+  return response;
+}
+
+async function route(request, { fetchImpl = fetch, cache = null } = {}) {
   if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: CORS });
   const url = new URL(request.url);
   if (request.method === 'GET' && url.pathname === '/privacy') {
@@ -119,6 +134,7 @@ export async function handleRequest(request, { fetchImpl = fetch, cache = null }
     const page = await checkerPage(url, { fetchImpl, cache });
     if (page) return page;
   }
+  if (request.method === 'GET' && !url.pathname.startsWith('/v1/')) return html(renderNotFoundPage(), 404);
   if (request.method !== 'GET' || url.pathname !== '/v1/store') return json({ error: 'not found' }, 404);
 
   const ids = [...new Set((url.searchParams.get('ids') ?? '').split(',').filter((id) => ID_PATTERN.test(id)))];

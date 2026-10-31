@@ -1,0 +1,32 @@
+name: False alarm or missed warning
+description: Extension Guardian warned about a safe extension, or stayed quiet about a bad one.
+labels: [rating]
+body:
+  - type: input
+    id: link
+    attributes:
+      label: Store link of the extension
+      placeholder: https://chromewebstore.google.com/detail/...
+    validations:
+      required: true
+  - type: dropdown
+    id: kind
+    attributes:
+      label: What went wrong?
+      options:
+        - It warned about an extension I trust
+        - It missed something it should have warned about
+        - The Access or Risk rating looks wrong
+    validations:
+      required: true
+  - type: textarea
+    id: details
+    attributes:
+      label: What did you see, and why do you think it's wrong?
+    validations:
+      required: true
+  - type: input
+    id: browser
+    attributes:
+      label: Browser and version
+      placeholder: Chrome 155, Firefox 159, Edge ...
