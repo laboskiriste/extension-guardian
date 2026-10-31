@@ -16,10 +16,12 @@ function serial(task) {
   return run;
 }
 
+// What the checks keep between runs. Site rules and the rest are read where needed.
 function load() {
   return chrome.storage.local.get({ snapshots: {}, storeInfo: {}, alerts: [] });
 }
 
+// Every other extension. Themes and apps are left out.
 async function installedExtensions() {
   const all = await chrome.management.getAll();
   return all.filter((e) => e.type === 'extension' && e.id !== chrome.runtime.id);
@@ -39,6 +41,7 @@ function makeAlert(ext, change) {
   };
 }
 
+// The badge counts alerts not seen yet; red if one of them is serious.
 async function updateBadge(alerts) {
   const unseen = alerts.filter((a) => !a.seen);
   await chrome.action.setBadgeText({ text: unseen.length ? String(unseen.length) : '' });
@@ -56,6 +59,7 @@ function isRepeat(alert, alerts) {
     && alert.at - a.at < REPEAT_MS);
 }
 
+// Saves new alerts, newest first, and notifies only for serious ones.
 async function addAlerts(candidates) {
   if (!candidates.length) return;
   const { alerts } = await load();

@@ -85,6 +85,9 @@ function parseDeveloper(block) {
   return { name, address, email, website };
 }
 
+// Returns { status: 'not_found' } for a removed extension, or { status: 'ok' }
+// with the developer, contact, trader status, version, update date and users.
+// Fields the page doesn't show are null.
 export function parseStorePage(html) {
   const title = /<title>([^<]*)<\/title>/.exec(html)?.[1]?.trim();
   const block = developerBlock(html);

@@ -54,6 +54,8 @@ function timeAgo(ms) {
 
 const RECENT_MS = 30 * 24 * 60 * 60 * 1000;
 
+// Reads installed extensions and stored results, and rates each extension.
+// Sorted with turned-on and riskier extensions first.
 async function load() {
   const [all, stored] = await Promise.all([
     chrome.management.getAll(),
@@ -238,6 +240,8 @@ function askForTabs() {
   return chrome.permissions.request({ permissions: ['tabs'] }).catch(() => false);
 }
 
+// The "Keep off on these sites" box in an extension's details. The
+// background script does the turning off and on; this only edits the list.
 function keepOffSites(ext) {
   const sites = data.siteRules[ext.id] ?? [];
   const save = (next) => send('setSites', { extId: ext.id, sites: next });
@@ -295,6 +299,7 @@ function keepOffSites(ext) {
   );
 }
 
+// One extension in the list: a header button, and the details when open.
 function extensionRow({ ext, store, risk }) {
   const open = expanded.has(ext.id);
   const toggle = () => { open ? expanded.delete(ext.id) : expanded.add(ext.id); render(); };
