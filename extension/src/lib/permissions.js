@@ -13,6 +13,11 @@ export const PERMISSIONS = {
     title: 'Can route your traffic through another server',
     detail: 'Everything you browse could pass through a server the developer controls.',
   },
+  webAuthenticationProxy: {
+    weight: 30,
+    title: 'Can answer passkey and security key requests',
+    detail: 'Can stand in for your passkeys and security keys when a site asks you to sign in.',
+  },
   webRequestAuthProvider: {
     weight: 25,
     title: 'Can answer login prompts',
@@ -40,6 +45,25 @@ export const PERMISSIONS = {
     broadWeight: 10,
     title: 'Can run code inside web pages',
     detail: 'Can add or change content on the pages it has access to.',
+  },
+  // Firefox and Manifest V2 only.
+  webRequestBlocking: {
+    weight: 5,
+    broadWeight: 15,
+    title: 'Can block or change your network requests',
+    detail: 'Can stop or change requests to the sites it has access to.',
+  },
+  userScripts: {
+    weight: 5,
+    broadWeight: 15,
+    title: 'Can run user scripts on web pages',
+    detail: 'Can run scripts written by you or others on the pages it has access to.',
+  },
+  declarativeNetRequestWithHostAccess: {
+    weight: 5,
+    broadWeight: 10,
+    title: 'Can block or redirect requests',
+    detail: 'Can block, redirect or change requests to the sites it has access to.',
   },
   history: {
     weight: 15,
@@ -70,6 +94,36 @@ export const PERMISSIONS = {
     weight: 15,
     title: 'Can record your screen',
     detail: 'Can capture your screen or windows.',
+  },
+  vpnProvider: {
+    weight: 20,
+    title: 'Can run a VPN',
+    detail: 'Can send your traffic through a VPN it controls (ChromeOS).',
+  },
+  certificateProvider: {
+    weight: 15,
+    title: 'Can use your security certificates',
+    detail: 'Can provide certificates that sign you in to websites and networks (ChromeOS).',
+  },
+  platformKeys: {
+    weight: 15,
+    title: 'Can use your security certificates',
+    detail: 'Can use certificates stored on your device to sign you in (ChromeOS).',
+  },
+  'enterprise.platformKeys': {
+    weight: 15,
+    title: 'Can use your security certificates',
+    detail: 'Can use certificates managed by your organization (ChromeOS).',
+  },
+  sessions: {
+    weight: 10,
+    title: 'Can see recently closed tabs',
+    detail: 'Can see tabs you closed recently and tabs open on your other devices.',
+  },
+  'identity.email': {
+    weight: 10,
+    title: 'Can see your email address',
+    detail: 'Can read the email address of the account you are signed in to the browser with.',
   },
   browsingData: {
     weight: 10,
@@ -105,6 +159,16 @@ export const PERMISSIONS = {
     weight: 5,
     title: 'Can manage your downloads',
     detail: 'Can see, start and open downloads.',
+  },
+  'downloads.open': {
+    weight: 5,
+    title: 'Can open downloaded files',
+    detail: 'Can open files it downloaded, after you click.',
+  },
+  readingList: {
+    weight: 5,
+    title: 'Can read and change your reading list',
+    detail: 'Can see and edit pages saved to your reading list.',
   },
   bookmarks: {
     weight: 5,
@@ -144,6 +208,7 @@ export function isBroadHost(pattern) {
 
 // Turns a match pattern like "https://*.google.com/*" into "google.com".
 export function hostLabel(pattern) {
+  if (pattern.startsWith('file:')) return 'files on your computer';
   const m = /^[^:]+:\/\/(?:\*\.)?([^/]+)/.exec(pattern);
   return m ? m[1] : pattern;
 }
