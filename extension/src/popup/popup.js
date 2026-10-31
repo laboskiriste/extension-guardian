@@ -274,7 +274,7 @@ function extensionRow({ ext, store, risk }) {
       h('div', { class: 'ext-name' },
         h('strong', {}, ext.name),
         h('span', {}, `v${ext.version} · ${ACCESS_LABEL[risk.access.level]}${
-          data.pausedBySites.includes(ext.id) ? ' · off on this site' : ext.enabled ? '' : ' · turned off'}`),
+          !ext.enabled && data.pausedBySites.includes(ext.id) ? ' · off on this site' : ext.enabled ? '' : ' · turned off'}`),
       ),
       h('span', { class: `pill ${risk.level}` }, RISK_LABEL[risk.level]),
     ),

@@ -12,6 +12,7 @@ let storePages = {};
 let badge = '';
 const tabs = [];
 let activeUrl = null;
+let lastQuery = null;
 let hasTabs = false;
 
 globalThis.chrome = {
@@ -35,7 +36,8 @@ globalThis.chrome = {
   notifications: { create: (id, opts) => notifications.push(opts), onClicked: on('notifClick'), clear: () => {} },
   tabs: {
     create: ({ url }) => tabs.push(url),
-    query: async () => (activeUrl ? [{ url: activeUrl, active: true }] : []),
+    // activeUrl '' is a focused window whose tab has no address, like devtools.
+    query: async (q) => { lastQuery = q; return activeUrl == null ? [] : [{ url: activeUrl || undefined, active: true }]; },
     onActivated: on('tabActivated'),
     onUpdated: on('tabUpdated'),
   },
@@ -166,7 +168,72 @@ test('removing the last site turns the extension back on', async () => {
   assert.equal(storage.siteRules[A], undefined);
 });
 
-const pageWithContact = (dev, site, email) => `<title>X - Chrome Web Store</title><li><div class="a">Developer</div><div><div class="b">${dev}<br>Street 1</div><a href="https://${site}/">Website</a><details>${email}</details></div></li>`;
+// Waits for everything queued before it.
+const settle = () => send({ type: 'markSeen' });
+
+test('turning an extension back on by hand on the site keeps it on until leaving', async () => {
+  installed = [ext(A, { mayDisable: true })];
+  hasTabs = true;
+  activeUrl = 'https://mybank.com/';
+  await send({ type: 'setSites', extId: A, sites: ['mybank.com'] });
+  assert.equal(installed[0].enabled, false);
+
+  installed[0].enabled = true; // by hand, from the popup or chrome://extensions
+  activeUrl = 'https://mybank.com/accounts';
+  listeners.tabUpdated(1, { url: activeUrl }, { active: true });
+  await settle();
+  assert.equal(installed[0].enabled, true, 'not turned off again on the same site');
+  assert.deepEqual(storage.allowedBySites, [A]);
+  assert.deepEqual(storage.pausedBySites, []);
+
+  activeUrl = 'https://example.com/';
+  listeners.tabActivated({ tabId: 2 });
+  await settle();
+  assert.equal(installed[0].enabled, true);
+  assert.deepEqual(storage.allowedBySites, []);
+
+  activeUrl = 'https://mybank.com/';
+  listeners.tabActivated({ tabId: 1 });
+  await settle();
+  assert.equal(installed[0].enabled, false, 'off again on the next visit');
+});
+
+test('focus leaving the browser or moving to another window', async () => {
+  // A is off: mybank.com is the active tab of the focused window.
+  assert.equal(installed[0].enabled, false);
+  listeners.focus(-1); // chrome.windows.WINDOW_ID_NONE: another app has focus
+  await settle();
+  assert.equal(installed[0].enabled, false, 'the last focused window still shows the site');
+  assert.deepEqual(lastQuery, { active: true, lastFocusedWindow: true });
+
+  activeUrl = ''; // a devtools window: no address to check
+  listeners.focus(3);
+  await settle();
+  assert.equal(installed[0].enabled, false);
+
+  activeUrl = 'https://example.com/'; // another window, on another site
+  listeners.focus(2);
+  await settle();
+  assert.equal(installed[0].enabled, true);
+});
+
+test('uninstalling an extension while it is paused forgets it', async () => {
+  activeUrl = 'https://mybank.com/';
+  listeners.tabActivated({ tabId: 1 });
+  await settle();
+  assert.deepEqual(storage.pausedBySites, [A]);
+  installed = [];
+  listeners.extUninstalled(A);
+  await settle();
+  assert.deepEqual(storage.pausedBySites, []);
+  assert.equal(storage.siteRules[A], undefined);
+  activeUrl = 'https://example.com/';
+  listeners.tabActivated({ tabId: 2 });
+  await settle(); // nothing left to turn back on, and no error
+  assert.deepEqual(storage.pausedBySites, []);
+});
+
+const pageWithContact =(dev, site, email) => `<title>X - Chrome Web Store</title><li><div class="a">Developer</div><div><div class="b">${dev}<br>Street 1</div><a href="https://${site}/">Website</a><details>${email}</details></div></li>`;
 const clearStorage = () => { for (const key of Object.keys(storage)) delete storage[key]; };
 
 test('two alerts made at once get different ids', async () => {

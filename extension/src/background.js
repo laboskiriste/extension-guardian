@@ -150,13 +150,18 @@ async function checkStore(onlyIds = null) {
   await addAlerts(fresh);
 }
 
+// Drops everything we kept about an uninstalled extension.
 async function forget(id) {
   const { snapshots, storeInfo } = await load();
-  const { siteRules } = await chrome.storage.local.get({ siteRules: {} });
+  const { siteRules, pausedBySites, allowedBySites } = await chrome.storage.local.get({ siteRules: {}, pausedBySites: [], allowedBySites: [] });
   delete snapshots[id];
   delete storeInfo[id];
   delete siteRules[id];
-  await chrome.storage.local.set({ snapshots, storeInfo, siteRules });
+  await chrome.storage.local.set({
+    snapshots, storeInfo, siteRules,
+    pausedBySites: pausedBySites.filter((x) => x !== id),
+    allowedBySites: allowedBySites.filter((x) => x !== id),
+  });
 }
 
 // "Keep off on these sites". Reading the active tab's address needs the
@@ -167,11 +172,13 @@ async function applySiteRules() {
   const [tab] = await chrome.tabs.query({ active: true, lastFocusedWindow: true });
   // No address (a devtools window, a closed window): leave things as they are.
   if (!tab?.url) return;
-  const { siteRules, pausedBySites } = await chrome.storage.local.get({ siteRules: {}, pausedBySites: [] });
-  const plan = planSiteRules({ url: tab.url, rules: siteRules, exts: await installedExtensions(), paused: pausedBySites });
+  const { siteRules, pausedBySites, allowedBySites } = await chrome.storage.local.get({ siteRules: {}, pausedBySites: [], allowedBySites: [] });
+  const plan = planSiteRules({
+    url: tab.url, rules: siteRules, exts: await installedExtensions(), paused: pausedBySites, allowed: allowedBySites,
+  });
   for (const id of plan.disable) await chrome.management.setEnabled(id, false).catch(console.warn);
   for (const id of plan.enable) await chrome.management.setEnabled(id, true).catch(console.warn);
-  await chrome.storage.local.set({ pausedBySites: plan.paused });
+  await chrome.storage.local.set({ pausedBySites: plan.paused, allowedBySites: plan.allowed });
 }
 
 // onInstalled and onStartup both call this. Chrome keeps alarms across
