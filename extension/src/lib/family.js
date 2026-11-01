@@ -14,7 +14,7 @@ globalThis.TINYWARD = {
       "id": "unseen",
       "name": "Unseen: Email Tracker Blocker",
       "short": "Blocks email trackers in Gmail.",
-      "chrome": null,
+      "chrome": "https://chromewebstore.google.com/detail/unseen-email-tracker-bloc/fibpgcjlnnookmhclhpmhmajileledhd",
       "firefox": null,
       "website": "https://laboskiriste.github.io/unseen/"
     }

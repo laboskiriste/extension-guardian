@@ -9,6 +9,7 @@ import { replacementFor } from './replacements.js';
 const STORE_LINK = 'https://chromewebstore.google.com/detail/extension-guardian/mpceklcidiadoneogfmpkjpadihmlcjd';
 const GITHUB_LINK = 'https://github.com/laboskiriste/extension-guardian';
 const UNSEEN_LINK = 'https://laboskiriste.github.io/unseen/';
+const UNSEEN_STORE = 'https://chromewebstore.google.com/detail/unseen-email-tracker-bloc/fibpgcjlnnookmhclhpmhmajileledhd';
 const DAY = 24 * 60 * 60 * 1000;
 
 // A name for an extension the store no longer shows: from a malware report,
@@ -445,7 +446,7 @@ const FEATURES = `
 </section>
 <section class="card sibling">
   <h2>Also from Tinyward: Unseen</h2>
-  <p class="text">Newsletters hide a tiny image that tells the sender when you open their email. Unseen blocks it in Gmail, with no access to any other site. <a href="${UNSEEN_LINK}">Learn more →</a></p>
+  <p class="text">Newsletters hide a tiny image that tells the sender when you open their email. Unseen blocks it in Gmail, with no access to any other site. <a href="${UNSEEN_STORE}">Add to Chrome</a> · <a href="${UNSEEN_LINK}">Learn more →</a></p>
 </section>`;
 
 const reportTeaser = () => `
