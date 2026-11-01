@@ -10,7 +10,7 @@ A browser extension for Chrome (and Edge, Brave) and Firefox that watches your o
 - **Removed from the store**: Google often takes down malware this way.
 - **Sideloaded extensions**, and extensions that update from outside the store.
 - **Help after a removal**: what to do next, and a trusted replacement for well-known extensions such as uBlock Origin (`src/lib/replacements.js`).
-- **Keep off on these sites** (Chrome only): turns an extension off while one of the user's sites is in the active tab, and back on after. It needs the optional `tabs` permission, asked for when the user adds a first site. The tab address is checked on the device only.
+- **Keep off on these sites** (Chrome only): turns an extension off while one of the user's sites is open in any tab, and back on once it's closed. It needs the optional `tabs` permission, asked for when the user adds a first site. The tab address is checked on the device only.
 
 Risk scoring and change detection run locally. Chrome does not let extensions read Chrome Web Store pages, so developer information comes from a small server, `../server`. The extension sends it only the IDs of installed extensions, nothing about the user. In Firefox, the extension asks the public addons.mozilla.org API directly and never contacts our server.
 

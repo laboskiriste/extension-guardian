@@ -26,7 +26,7 @@ Extensions get sold. The new owner pushes an update, Chrome installs it silently
 
 When an extension is removed from the store, Guardian says what to do next and, for well-known ones such as uBlock Origin, what to use instead.
 
-**Keep off on these sites** (Chrome): pick sites where an extension should never run, such as your bank. Guardian turns it off while one of those sites is in the active tab and back on when you leave. This needs the optional `tabs` permission, which Chrome asks for only when you add a first site. The address is checked on your device and never sent anywhere.
+**Keep off on these sites** (Chrome): pick sites where an extension should never run, such as your bank. Guardian turns it off while one of those sites is open in any tab and back on when you close it. This needs the optional `tabs` permission, which Chrome asks for only when you add a first site. The address is checked on your device and never sent anywhere.
 
 Every extension gets two ratings:
 

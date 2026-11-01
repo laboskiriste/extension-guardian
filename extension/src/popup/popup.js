@@ -266,7 +266,7 @@ function keepOffSites(ext) {
   const error = siteErrors[ext.id];
   return h('div', { class: 'sites' },
     h('h3', {}, 'Keep off on these sites'),
-    h('p', { class: 'muted' }, `Guardian turns ${ext.name} off while one of these sites is in the active tab, and back on when you leave. Reload a page that was already open. The address of the active tab never leaves your device.`),
+    h('p', { class: 'muted' }, `Guardian turns ${ext.name} off while one of these sites is open in any tab, and back on when you close it. Reload a page that was already open. Tab addresses never leave your device.`),
     sites.length > 0 && h('ul', { class: 'chips' }, sites.map((site) => h('li', {},
       site,
       h('button', {
@@ -276,7 +276,7 @@ function keepOffSites(ext) {
       }, '×'),
     ))),
     sites.length > 0 && !data.hasTabs && h('p', { class: 'warn' },
-      'Not active yet: Guardian needs to see the address of the active tab. ',
+      'Not active yet: Guardian needs to see the addresses of your open tabs. ',
       h('button', { class: 'link', onclick: async () => { await askForTabs(); refresh(); } }, 'Allow'),
     ),
     h('form', { class: 'site-form', onsubmit: add },

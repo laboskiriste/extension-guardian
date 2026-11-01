@@ -48,7 +48,7 @@ ONE CLICK TO ACT
 Turn off or remove an extension right from the list, or open its store page. If an extension was removed from the store, Extension Guardian tells you what to do next, and for well-known ones what to use instead.
 
 KEEP EXTENSIONS OFF YOUR BANK
-Choose sites where an extension should never run, like your bank or email. Extension Guardian turns it off while you're there and back on when you leave.
+Choose sites where an extension should never run, like your bank or email. Extension Guardian turns it off while the site is open in any tab and back on when you close it.
 
 PRIVATE BY DESIGN
 • Your list of extensions and all results stay on your device.
@@ -93,7 +93,7 @@ Schedules a check of the Chrome Web Store information every 6 hours, so ownershi
 
 `tabs` (optional, asked for only when the user adds a first "Keep off on these sites" rule)
 ```
-Reads the address of the active tab so an extension the user chose can be turned off while one of the user's sites is open (for example their bank) and turned back on when they leave. The address is compared on the device and never stored or sent anywhere.
+Reads the addresses of open tabs so an extension the user chose can be turned off while one of the user's sites is open (for example their bank) and turned back on once it is closed. The address is compared on the device and never stored or sent anywhere.
 ```
 
 `notifications`

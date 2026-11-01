@@ -50,46 +50,58 @@ const ext = (id, extra = {}) => ({ id, enabled: true, mayDisable: true, ...extra
 
 test('planSiteRules turns off on a matching site and back on after', () => {
   const rules = { a: ['mybank.com'] };
-  const on = planSiteRules({ url: 'https://mybank.com/', rules, exts: [ext('a'), ext('b')], paused: [] });
+  const on = planSiteRules({ urls: ['https://mybank.com/'], rules, exts: [ext('a'), ext('b')], paused: [] });
   assert.deepEqual(on, { disable: ['a'], enable: [], paused: ['a'], allowed: [] });
-  const off = planSiteRules({ url: 'https://example.com/', rules, exts: [ext('a', { enabled: false })], paused: ['a'] });
+  const off = planSiteRules({ urls: ['https://example.com/'], rules, exts: [ext('a', { enabled: false })], paused: ['a'] });
   assert.deepEqual(off, { disable: [], enable: ['a'], paused: [], allowed: [] });
 });
 
 test('planSiteRules with no rules, unknown ids and duplicates', () => {
   const none = { disable: [], enable: [], paused: [], allowed: [] };
-  assert.deepEqual(planSiteRules({ url: 'https://mybank.com/', rules: {}, exts: [ext('a')], paused: [] }), none);
-  assert.deepEqual(planSiteRules({ url: 'https://mybank.com/', rules: { a: [] }, exts: [ext('a')], paused: [] }), none);
-  assert.deepEqual(planSiteRules({ url: 'https://mybank.com/', rules: { gone: ['mybank.com'] }, exts: [ext('a')], paused: ['gone'], allowed: ['gone'] }), none);
+  assert.deepEqual(planSiteRules({ urls: ['https://mybank.com/'], rules: {}, exts: [ext('a')], paused: [] }), none);
+  assert.deepEqual(planSiteRules({ urls: ['https://mybank.com/'], rules: { a: [] }, exts: [ext('a')], paused: [] }), none);
+  assert.deepEqual(planSiteRules({ urls: ['https://mybank.com/'], rules: { gone: ['mybank.com'] }, exts: [ext('a')], paused: ['gone'], allowed: ['gone'] }), none);
   const dup = planSiteRules({
-    url: 'https://example.com/', rules: { a: ['mybank.com', 'mybank.com'] }, exts: [ext('a', { enabled: false })], paused: ['a', 'a'],
+    urls: ['https://example.com/'], rules: { a: ['mybank.com', 'mybank.com'] }, exts: [ext('a', { enabled: false })], paused: ['a', 'a'],
   });
   assert.deepEqual(dup, { disable: [], enable: ['a'], paused: [], allowed: [] });
-  const twice = planSiteRules({ url: 'https://mybank.com/', rules: { a: ['mybank.com', 'mybank.com'] }, exts: [ext('a')], paused: [] });
+  const twice = planSiteRules({ urls: ['https://mybank.com/'], rules: { a: ['mybank.com', 'mybank.com'] }, exts: [ext('a')], paused: [] });
   assert.deepEqual(twice.disable, ['a']);
 });
 
 test('planSiteRules leaves an extension on that the user turned on while on the site', () => {
   const rules = { a: ['mybank.com'] };
-  const here = planSiteRules({ url: 'https://mybank.com/x', rules, exts: [ext('a')], paused: ['a'] });
+  const here = planSiteRules({ urls: ['https://mybank.com/x'], rules, exts: [ext('a')], paused: ['a'] });
   assert.deepEqual(here, { disable: [], enable: [], paused: [], allowed: ['a'] });
-  const still = planSiteRules({ url: 'https://login.mybank.com/', rules, exts: [ext('a')], paused: [], allowed: ['a'] });
+  const still = planSiteRules({ urls: ['https://login.mybank.com/'], rules, exts: [ext('a')], paused: [], allowed: ['a'] });
   assert.deepEqual(still, { disable: [], enable: [], paused: [], allowed: ['a'] });
-  const left = planSiteRules({ url: 'https://example.com/', rules, exts: [ext('a')], paused: [], allowed: ['a'] });
+  const left = planSiteRules({ urls: ['https://example.com/'], rules, exts: [ext('a')], paused: [], allowed: ['a'] });
   assert.deepEqual(left, { disable: [], enable: [], paused: [], allowed: [] });
 });
 
 test('planSiteRules never turns on an extension that was off before the site opened', () => {
-  const plan = planSiteRules({ url: 'https://example.com/', rules: { a: ['mybank.com'] }, exts: [ext('a', { enabled: false })], paused: [] });
+  const plan = planSiteRules({ urls: ['https://example.com/'], rules: { a: ['mybank.com'] }, exts: [ext('a', { enabled: false })], paused: [] });
   assert.deepEqual(plan.enable, []);
 });
 
 test('planSiteRules skips extensions it may not turn off', () => {
-  const plan = planSiteRules({ url: 'https://mybank.com/', rules: { a: ['mybank.com'] }, exts: [ext('a', { mayDisable: false })], paused: [] });
+  const plan = planSiteRules({ urls: ['https://mybank.com/'], rules: { a: ['mybank.com'] }, exts: [ext('a', { mayDisable: false })], paused: [] });
   assert.deepEqual(plan.disable, []);
 });
 
 test('planSiteRules forgets an extension the user turned back on, or uninstalled', () => {
-  const plan = planSiteRules({ url: 'https://example.com/', rules: { a: ['mybank.com'] }, exts: [ext('a')], paused: ['a', 'gone'] });
+  const plan = planSiteRules({ urls: ['https://example.com/'], rules: { a: ['mybank.com'] }, exts: [ext('a')], paused: ['a', 'gone'] });
   assert.deepEqual(plan, { disable: [], enable: [], paused: [], allowed: [] });
 });
+
+test('planSiteRules counts every open tab, not only the active one', () => {
+  const rules = { a: ['mybank.com'] };
+  const urls = ['https://news.example.com/', 'https://mybank.com/accounts'];
+  assert.deepEqual(planSiteRules({ urls, rules, exts: [ext('a')], paused: [] }).disable, ['a']);
+  const stillOpen = planSiteRules({ urls, rules, exts: [ext('a', { enabled: false })], paused: ['a'] });
+  assert.deepEqual(stillOpen.enable, [], 'stays off while the site is open in a background tab');
+  const closed = planSiteRules({ urls: [urls[0]], rules, exts: [ext('a', { enabled: false })], paused: ['a'] });
+  assert.deepEqual(closed.enable, ['a']);
+  assert.deepEqual(planSiteRules({ urls: [], rules, exts: [ext('a', { enabled: false })], paused: ['a'] }).enable, ['a'], 'no tabs left');
+});
+

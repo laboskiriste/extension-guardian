@@ -120,7 +120,7 @@
         onChanged: { addListener: () => {} },
       },
       tabs: { create: () => {} },
-      // ?tabs: as if the user already allowed Guardian to see the active tab.
+      // ?tabs: as if the user already allowed Guardian to see tab addresses.
       permissions: {
         contains: async () => hasTabs,
         request: async () => { hasTabs = hasTabs || confirm('Allow "Read your browsing history"?'); return hasTabs; },

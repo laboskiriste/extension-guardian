@@ -6,7 +6,8 @@ Versions of the Extension Guardian browser extension. The server and web checker
 
 Draft notes. The version in `manifest.json` is still 0.1.4.
 
-- **Keep off on these sites:** an extension you turn back on by hand while on one of your sites now stays on until you leave, instead of being turned off again on the next page.
+- **Keep off on these sites:** now covers every open tab, not only the active one. A bank left open in a background tab keeps the extension off until that tab is closed or leaves the site. No new permission.
+- **Keep off on these sites:** an extension you turn back on by hand while one of your sites is open now stays on until you close it, instead of being turned off again on the next page.
 - **Keep off on these sites:** the site box says when a site isn't valid or is already on the list. It accepts international domain names, IP addresses, ports and `*.example.com`.
 - **Fewer repeated alerts:** the same warning isn't added or notified again within a week, for example when a store page flickers.
 - **Fewer server calls:** when several extensions update at once, Guardian checks them in one request.

@@ -12,6 +12,7 @@ let storePages = {};
 let badge = '';
 const tabs = [];
 let activeUrl = null;
+let otherUrls = []; // tabs open in the background
 let lastQuery = null;
 let hasTabs = false;
 
@@ -24,7 +25,6 @@ globalThis.chrome = {
     onUninstalled: on('extUninstalled'),
   },
   permissions: { contains: async () => hasTabs, onAdded: on('permAdded') },
-  windows: { onFocusChanged: on('focus') },
   storage: {
     local: {
       get: async (defaults) => structuredClone({ ...defaults, ...storage }),
@@ -36,10 +36,14 @@ globalThis.chrome = {
   notifications: { create: (id, opts) => notifications.push(opts), onClicked: on('notifClick'), clear: () => {} },
   tabs: {
     create: ({ url }) => tabs.push(url),
-    // activeUrl '' is a focused window whose tab has no address, like devtools.
-    query: async (q) => { lastQuery = q; return activeUrl == null ? [] : [{ url: activeUrl || undefined, active: true }]; },
-    onActivated: on('tabActivated'),
+    // activeUrl '' is a tab with no address, like devtools.
+    query: async (q) => {
+      lastQuery = q;
+      const active = activeUrl == null ? [] : [{ url: activeUrl || undefined, active: true }];
+      return [...active, ...otherUrls.map((url) => ({ url, active: false }))];
+    },
     onUpdated: on('tabUpdated'),
+    onRemoved: on('tabRemoved'),
   },
 };
 
@@ -144,7 +148,7 @@ test('keep off on these sites: off on the site, back on after leaving', async ()
   assert.deepEqual(storage.pausedBySites, [A]);
 
   activeUrl = 'https://news.example.com/';
-  listeners.tabActivated({ tabId: 2 });
+  listeners.tabUpdated(2, { url: activeUrl });
   await send({ type: 'markSeen' });
   assert.equal(installed[0].enabled, true);
   assert.deepEqual(storage.pausedBySites, []);
@@ -154,10 +158,10 @@ test('keep off on these sites never turns on an extension the user turned off', 
   installed = [ext(A, { mayDisable: true }), ext(B, { mayDisable: true, enabled: false })];
   await send({ type: 'setSites', extId: B, sites: ['mybank.com'] });
   activeUrl = 'https://mybank.com/';
-  listeners.tabUpdated(1, { url: activeUrl }, { active: true });
+  listeners.tabUpdated(1, { url: activeUrl });
   await send({ type: 'markSeen' });
   activeUrl = 'https://example.com/';
-  listeners.tabUpdated(1, { url: activeUrl }, { active: true });
+  listeners.tabUpdated(1, { url: activeUrl });
   await send({ type: 'markSeen' });
   assert.equal(installed[1].enabled, false);
 });
@@ -184,46 +188,60 @@ test('turning an extension back on by hand on the site keeps it on until leaving
 
   installed[0].enabled = true; // by hand, from the popup or chrome://extensions
   activeUrl = 'https://mybank.com/accounts';
-  listeners.tabUpdated(1, { url: activeUrl }, { active: true });
+  listeners.tabUpdated(1, { url: activeUrl });
   await settle();
   assert.equal(installed[0].enabled, true, 'not turned off again on the same site');
   assert.deepEqual(storage.allowedBySites, [A]);
   assert.deepEqual(storage.pausedBySites, []);
 
   activeUrl = 'https://example.com/';
-  listeners.tabActivated({ tabId: 2 });
+  listeners.tabUpdated(2, { url: activeUrl });
   await settle();
   assert.equal(installed[0].enabled, true);
   assert.deepEqual(storage.allowedBySites, []);
 
   activeUrl = 'https://mybank.com/';
-  listeners.tabActivated({ tabId: 1 });
+  listeners.tabUpdated(1, { url: activeUrl });
   await settle();
   assert.equal(installed[0].enabled, false, 'off again on the next visit');
 });
 
-test('focus leaving the browser or moving to another window', async () => {
-  // A is off: mybank.com is the active tab of the focused window.
+test('a site left open in a background tab keeps the extension off', async () => {
+  // A is off: mybank.com is open.
   assert.equal(installed[0].enabled, false);
-  listeners.focus(-1); // chrome.windows.WINDOW_ID_NONE: another app has focus
+  otherUrls = ['https://mybank.com/accounts'];
+  activeUrl = 'https://example.com/'; // the user switched to another tab or window
+  listeners.tabUpdated(2, { url: activeUrl });
   await settle();
-  assert.equal(installed[0].enabled, false, 'the last focused window still shows the site');
-  assert.deepEqual(lastQuery, { active: true, lastFocusedWindow: true });
+  assert.equal(installed[0].enabled, false, 'the bank is still open behind');
+  assert.deepEqual(lastQuery, {}, 'reads every tab in every window');
 
   activeUrl = ''; // a devtools window: no address to check
-  listeners.focus(3);
+  listeners.tabUpdated(3, { url: 'devtools://x' });
   await settle();
   assert.equal(installed[0].enabled, false);
 
-  activeUrl = 'https://example.com/'; // another window, on another site
-  listeners.focus(2);
+  otherUrls = []; // the bank tab is closed
+  listeners.tabRemoved(4, { windowId: 1, isWindowClosing: false });
+  await settle();
+  assert.equal(installed[0].enabled, true);
+  activeUrl = 'https://example.com/';
+});
+
+test('the check runs at startup for restored tabs', async () => {
+  activeUrl = 'https://mybank.com/';
+  listeners.startup();
+  await settle();
+  assert.equal(installed[0].enabled, false);
+  activeUrl = 'https://example.com/';
+  listeners.tabUpdated(1, { url: activeUrl });
   await settle();
   assert.equal(installed[0].enabled, true);
 });
 
 test('uninstalling an extension while it is paused forgets it', async () => {
   activeUrl = 'https://mybank.com/';
-  listeners.tabActivated({ tabId: 1 });
+  listeners.tabUpdated(1, { url: activeUrl });
   await settle();
   assert.deepEqual(storage.pausedBySites, [A]);
   installed = [];
@@ -232,7 +250,7 @@ test('uninstalling an extension while it is paused forgets it', async () => {
   assert.deepEqual(storage.pausedBySites, []);
   assert.equal(storage.siteRules[A], undefined);
   activeUrl = 'https://example.com/';
-  listeners.tabActivated({ tabId: 2 });
+  listeners.tabUpdated(2, { url: activeUrl });
   await settle(); // nothing left to turn back on, and no error
   assert.deepEqual(storage.pausedBySites, []);
 });

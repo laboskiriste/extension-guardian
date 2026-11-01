@@ -198,17 +198,16 @@ async function forgetMissing() {
   await forget(kept.filter((id) => !installed.has(id)));
 }
 
-// "Keep off on these sites". Reading the active tab's address needs the
-// optional `tabs` permission, which the user grants when adding a first site.
+// "Keep off on these sites". Reading tab addresses needs the optional `tabs`
+// permission, which the user grants when adding a first site. Every open tab
+// counts, in every window, so a bank left open in a background tab stays covered.
 // Firefox only lets an add-on turn off themes, so the feature is Chrome-only.
 async function applySiteRules() {
   if (IS_FIREFOX || !(await chrome.permissions.contains({ permissions: ['tabs'] }))) return;
-  const [tab] = await chrome.tabs.query({ active: true, lastFocusedWindow: true });
-  // No address (a devtools window, a closed window): leave things as they are.
-  if (!tab?.url) return;
+  const urls = (await chrome.tabs.query({})).map((tab) => tab.url).filter(Boolean);
   const { siteRules, pausedBySites, allowedBySites } = await chrome.storage.local.get({ siteRules: {}, pausedBySites: [], allowedBySites: [] });
   const plan = planSiteRules({
-    url: tab.url, rules: siteRules, exts: await installedExtensions(), paused: pausedBySites, allowed: allowedBySites,
+    urls, rules: siteRules, exts: await installedExtensions(), paused: pausedBySites, allowed: allowedBySites,
   });
   for (const id of plan.disable) await chrome.management.setEnabled(id, false).catch(console.warn);
   for (const id of plan.enable) await chrome.management.setEnabled(id, true).catch(console.warn);
@@ -270,6 +269,8 @@ chrome.runtime.onInstalled.addListener(({ reason }) => {
 chrome.runtime.onStartup.addListener(() => {
   ensureAlarm();
   serial(forgetMissing);
+  // Tabs restored at startup don't always report their address as an update.
+  serial(applySiteRules);
   queueScan();
 });
 
@@ -327,9 +328,8 @@ const handlers = {
 
 if (!IS_FIREFOX) {
   const siteCheck = () => serial(applySiteRules);
-  chrome.tabs.onActivated.addListener(siteCheck);
-  chrome.tabs.onUpdated.addListener((_id, change, tab) => { if (change.url && tab.active) siteCheck(); });
-  chrome.windows.onFocusChanged.addListener(siteCheck);
+  chrome.tabs.onUpdated.addListener((_id, change) => { if (change.url) siteCheck(); });
+  chrome.tabs.onRemoved.addListener(siteCheck);
   chrome.permissions.onAdded.addListener(siteCheck);
 }
 

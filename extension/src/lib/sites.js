@@ -1,5 +1,5 @@
 // "Keep off on these sites": an extension is turned off while one of its
-// sites is open in the active tab, and turned back on when the user leaves.
+// sites is open in any tab, and turned back on once no tab shows it.
 
 // Turns what the user typed ("https://www.mybank.com/login", "mybank.com")
 // into a bare host name, or null if it isn't one. Ports are dropped, since a
@@ -34,13 +34,13 @@ export function matchesSite(url, sites) {
   return sites.some((site) => host === site || host.endsWith(`.${site}`));
 }
 
-// Decides which extensions to turn off and on for the active tab's URL.
+// Decides which extensions to turn off and on for the URLs of all open tabs.
 // `paused` holds the extensions we turned off ourselves, so we never turn on
 // one the user turned off. `allowed` holds the ones the user turned back on
-// by hand while on one of their sites: they stay on until the user leaves.
-export function planSiteRules({ url, rules, exts, paused, allowed = [] }) {
+// by hand while one of their sites was open: they stay on until it's closed.
+export function planSiteRules({ urls, rules, exts, paused, allowed = [] }) {
   const byId = new Map(exts.map((e) => [e.id, e]));
-  const here = (id) => matchesSite(url, rules[id] ?? []);
+  const here = (id) => urls.some((url) => matchesSite(url, rules[id] ?? []));
   const disable = [];
   const enable = [];
   const nextPaused = new Set();
@@ -65,7 +65,7 @@ export function planSiteRules({ url, rules, exts, paused, allowed = [] }) {
   for (const [id, sites] of Object.entries(rules)) {
     const ext = byId.get(id);
     if (!ext?.enabled || !ext.mayDisable || !sites.length || nextAllowed.has(id)) continue;
-    if (matchesSite(url, sites)) {
+    if (here(id)) {
       disable.push(id);
       nextPaused.add(id);
     }

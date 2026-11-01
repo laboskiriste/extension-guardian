@@ -37,7 +37,7 @@ It is built to need as little of your data as possible. This page explains exact
 <p>The extension reads the list of extensions installed in your browser, with their names, versions, permissions and how they were installed,
 using Chrome's <code>management</code> API. It saves this list, the results of its checks and your alerts in your browser's local storage,
 so it can tell when something changes. This data never leaves your device, except as described below.</p>
-<p>If you use <strong>Keep off on these sites</strong>, the extension also reads the address of the active tab (Chrome's optional
+<p>If you use <strong>Keep off on these sites</strong>, the extension also reads the addresses of your open tabs (Chrome's optional
 <code>tabs</code> permission, which it asks for only then) and compares it on your device with the sites you chose. Addresses are not stored
 and never leave your device. The sites you chose are saved in your browser's local storage.</p>
 
