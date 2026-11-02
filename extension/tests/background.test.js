@@ -24,7 +24,7 @@ globalThis.chrome = {
     onInstalled: on('extInstalled'),
     onUninstalled: on('extUninstalled'),
   },
-  permissions: { contains: async () => hasTabs, onAdded: on('permAdded') },
+  permissions: { contains: async () => hasTabs, onAdded: on('permAdded'), onRemoved: on('permRemoved') },
   storage: {
     local: {
       get: async (defaults) => structuredClone({ ...defaults, ...storage }),
@@ -64,6 +64,12 @@ await import('../src/background.js');
 
 const [A, B, C, D, E, F] = 'abcdef'.split('').map((c) => c.repeat(32));
 const send = (msg) => new Promise((resolve) => listeners.message(msg, {}, resolve));
+// Waits for everything queued before it, on both queues. The fake APIs answer
+// at once, so one turn of the event loop lets the site queue finish too.
+const settle = async () => {
+  await send({ type: 'markSeen' });
+  await new Promise((resolve) => setTimeout(resolve, 0));
+};
 const ext = (id, extra = {}) => ({
   id, name: `Ext ${id}`, version: '1.0', type: 'extension', enabled: true, installType: 'normal',
   updateUrl: 'https://clients2.google.com/service/update2/crx', permissions: ['storage'], hostPermissions: [], ...extra,
@@ -142,14 +148,14 @@ test('keep off on these sites: off on the site, back on after leaving', async ()
 
   hasTabs = true;
   listeners.permAdded({ permissions: ['tabs'] });
-  await send({ type: 'markSeen' }); // waits for the queued check
+  await settle(); // waits for the queued check
   assert.equal(installed[0].enabled, false);
   assert.equal(installed[1].enabled, true, 'other extensions are untouched');
   assert.deepEqual(storage.pausedBySites, [A]);
 
   activeUrl = 'https://news.example.com/';
   listeners.tabUpdated(2, { url: activeUrl });
-  await send({ type: 'markSeen' });
+  await settle();
   assert.equal(installed[0].enabled, true);
   assert.deepEqual(storage.pausedBySites, []);
 });
@@ -159,10 +165,10 @@ test('keep off on these sites never turns on an extension the user turned off', 
   await send({ type: 'setSites', extId: B, sites: ['mybank.com'] });
   activeUrl = 'https://mybank.com/';
   listeners.tabUpdated(1, { url: activeUrl });
-  await send({ type: 'markSeen' });
+  await settle();
   activeUrl = 'https://example.com/';
   listeners.tabUpdated(1, { url: activeUrl });
-  await send({ type: 'markSeen' });
+  await settle();
   assert.equal(installed[1].enabled, false);
 });
 
@@ -176,8 +182,6 @@ test('removing the last site turns the extension back on', async () => {
   assert.equal(storage.siteRules[A], undefined);
 });
 
-// Waits for everything queued before it.
-const settle = () => send({ type: 'markSeen' });
 
 test('turning an extension back on by hand on the site keeps it on until leaving', async () => {
   installed = [ext(A, { mayDisable: true })];
@@ -253,6 +257,63 @@ test('uninstalling an extension while it is paused forgets it', async () => {
   listeners.tabUpdated(2, { url: activeUrl });
   await settle(); // nothing left to turn back on, and no error
   assert.deepEqual(storage.pausedBySites, []);
+});
+
+test('taking back the tabs permission turns paused extensions back on', async () => {
+  installed = [ext(A, { mayDisable: true })];
+  hasTabs = true;
+  activeUrl = 'https://mybank.com/';
+  await send({ type: 'setSites', extId: A, sites: ['mybank.com'] });
+  assert.equal(installed[0].enabled, false);
+  hasTabs = false;
+  listeners.permRemoved({ permissions: ['tabs'] });
+  await settle();
+  assert.equal(installed[0].enabled, true);
+  assert.deepEqual(storage.pausedBySites, []);
+  hasTabs = true;
+  activeUrl = 'https://example.com/';
+  await settle();
+});
+
+test('a slow store check does not delay keeping an extension off', async () => {
+  installed = [ext(A, { mayDisable: true })];
+  await send({ type: 'setSites', extId: A, sites: ['mybank.com'] });
+  let release;
+  const realFetch = globalThis.fetch;
+  globalThis.fetch = () => new Promise((resolve) => { release = () => resolve(new Response('{"results":{}}')); });
+  const check = send({ type: 'scan' }); // stuck on the server
+  await new Promise((resolve) => setTimeout(resolve, 0));
+  activeUrl = 'https://mybank.com/';
+  listeners.tabUpdated(1, { url: activeUrl });
+  await new Promise((resolve) => setTimeout(resolve, 0));
+  assert.equal(installed[0].enabled, false, 'turned off while the store check still waits');
+  release();
+  await check;
+  globalThis.fetch = realFetch;
+  activeUrl = 'https://example.com/';
+  listeners.tabUpdated(1, { url: activeUrl });
+  await settle();
+  assert.equal(installed[0].enabled, true);
+});
+
+test('which extensions are ours is saved before they are turned off', async () => {
+  installed = [ext(A, { mayDisable: true })];
+  const realSetEnabled = chrome.management.setEnabled;
+  let savedFirst = null;
+  chrome.management.setEnabled = async (id, enabled) => {
+    if (!enabled) savedFirst = storage.pausedBySites.includes(id);
+    return realSetEnabled(id, enabled);
+  };
+  activeUrl = 'https://mybank.com/';
+  listeners.tabUpdated(1, { url: activeUrl });
+  await settle();
+  chrome.management.setEnabled = realSetEnabled;
+  assert.equal(savedFirst, true);
+  assert.equal(installed[0].enabled, false);
+  activeUrl = 'https://example.com/';
+  listeners.tabUpdated(1, { url: activeUrl });
+  await settle();
+  assert.equal(installed[0].enabled, true);
 });
 
 const pageWithContact =(dev, site, email) => `<title>X - Chrome Web Store</title><li><div class="a">Developer</div><div><div class="b">${dev}<br>Street 1</div><a href="https://${site}/">Website</a><details>${email}</details></div></li>`;
@@ -334,4 +395,17 @@ test('the first-run scan runs before a scan sent right after install', async () 
   await send({ type: 'scan' });
   assert.deepEqual(storage.alerts ?? [], []);
   assert.ok(storage.installedAt);
+});
+
+test('a check where the server could look up nothing is shown as an error', async () => {
+  installed = [ext(E)];
+  storePages = { [E]: '<title>Odd - Chrome Web Store</title><div>no developer here</div>' };
+  await send({ type: 'scan' });
+  const before = storage.lastStoreCheckAt;
+  await send({ type: 'scan' });
+  assert.equal(storage.storeError, 'no extension could be checked');
+  assert.equal(storage.lastStoreCheckAt, before, 'not "checked just now"');
+  storePages = { [E]: page('Eve') };
+  await send({ type: 'scan' });
+  assert.equal(storage.storeError, null);
 });

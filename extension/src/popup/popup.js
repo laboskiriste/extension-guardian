@@ -65,6 +65,8 @@ async function load() {
     }),
   ]);
   const hasTabs = !IS_FIREFOX && await chrome.permissions.contains({ permissions: ['tabs'] });
+  // Private windows' tabs are only visible when the user allows Guardian in incognito.
+  const incognito = !IS_FIREFOX && await chrome.extension.isAllowedIncognitoAccess();
   const exts = all
     .filter((e) => e.type === 'extension' && e.id !== chrome.runtime.id)
     .map((ext) => {
@@ -78,7 +80,7 @@ async function load() {
       || (b.risk.score - a.risk.score)
       || (b.risk.access.score - a.risk.access.score)
       || a.ext.name.localeCompare(b.ext.name));
-  data = { exts, ...stored, hasTabs };
+  data = { exts, ...stored, hasTabs, incognito };
 }
 
 function send(type, extra = {}) {
@@ -267,6 +269,8 @@ function keepOffSites(ext) {
   return h('div', { class: 'sites' },
     h('h3', {}, 'Keep off on these sites'),
     h('p', { class: 'muted' }, `Guardian turns ${ext.name} off while one of these sites is open in any tab, and back on when you close it. Reload a page that was already open. Tab addresses never leave your device.`),
+    sites.length > 0 && !data.incognito && h('p', { class: 'muted' },
+      'Private windows count only if you allow Guardian in incognito, on its page in chrome://extensions.'),
     sites.length > 0 && h('ul', { class: 'chips' }, sites.map((site) => h('li', {},
       site,
       h('button', {

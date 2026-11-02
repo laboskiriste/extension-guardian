@@ -120,6 +120,8 @@
         onChanged: { addListener: () => {} },
       },
       tabs: { create: () => {} },
+      // ?incognito: as if Guardian is allowed in private windows.
+      extension: { isAllowedIncognitoAccess: async () => new URLSearchParams(location.search).has('incognito') },
       // ?tabs: as if the user already allowed Guardian to see tab addresses.
       permissions: {
         contains: async () => hasTabs,

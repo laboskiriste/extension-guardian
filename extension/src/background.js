@@ -9,12 +9,18 @@ const STORE_CHECK_MINUTES = 6 * 60;
 const MAX_ALERTS = 200;
 
 // Storage is read-modify-write, so every task runs one after another.
-let queue = Promise.resolve();
-function serial(task) {
-  const run = queue.then(task);
-  queue = run.catch((err) => console.error(err));
-  return run;
+function makeQueue() {
+  let queue = Promise.resolve();
+  return (task) => {
+    const run = queue.then(task);
+    queue = run.catch((err) => console.error(err));
+    return run;
+  };
 }
+const serial = makeQueue();
+// "Keep off on these sites" has its own queue and its own storage keys, so a
+// slow store check never delays turning an extension off when a bank opens.
+const siteSerial = makeQueue();
 
 // What the checks keep between runs. Site rules and the rest are read where needed.
 function load() {
@@ -138,6 +144,12 @@ async function checkStore(onlyIds = null) {
     return;
   }
   const results = exts.filter((e) => byId[e.id]).map((e) => [e, byId[e.id]]);
+  // The server answered but couldn't check any of them (store down, or its
+  // layout changed): say so, instead of "checked just now".
+  if (!results.length) {
+    await chrome.storage.local.set({ storeError: 'no extension could be checked' });
+    return;
+  }
 
   // If most pages suddenly look "removed", the store layout probably changed
   // and our parser is wrong. Don't scare the user with false alarms.
@@ -172,20 +184,24 @@ async function forget(ids) {
   const gone = new Set(ids);
   if (!gone.size) return;
   const { snapshots, storeInfo, alerts } = await load();
-  const { siteRules, pausedBySites, allowedBySites } = await chrome.storage.local.get({ siteRules: {}, pausedBySites: [], allowedBySites: [] });
   for (const id of gone) {
     delete snapshots[id];
     delete storeInfo[id];
-    delete siteRules[id];
   }
   const nextAlerts = alerts.filter((a) => !gone.has(a.extId));
+  await chrome.storage.local.set({ snapshots, storeInfo, alerts: nextAlerts });
+  if (nextAlerts.length !== alerts.length) await updateBadge(nextAlerts);
+  siteSerial(() => forgetSites(gone));
+}
+
+async function forgetSites(gone) {
+  const { siteRules, pausedBySites, allowedBySites } = await chrome.storage.local.get({ siteRules: {}, pausedBySites: [], allowedBySites: [] });
+  for (const id of gone) delete siteRules[id];
   await chrome.storage.local.set({
-    snapshots, storeInfo, siteRules,
-    alerts: nextAlerts,
+    siteRules,
     pausedBySites: pausedBySites.filter((x) => !gone.has(x)),
     allowedBySites: allowedBySites.filter((x) => !gone.has(x)),
   });
-  if (nextAlerts.length !== alerts.length) await updateBadge(nextAlerts);
 }
 
 // Finds ids we still keep data for that are no longer installed, for
@@ -202,16 +218,30 @@ async function forgetMissing() {
 // permission, which the user grants when adding a first site. Every open tab
 // counts, in every window, so a bank left open in a background tab stays covered.
 // Firefox only lets an add-on turn off themes, so the feature is Chrome-only.
+// Without `tabs` (the user took it back) no site counts as open, so every
+// extension we turned off is turned back on.
 async function applySiteRules() {
-  if (IS_FIREFOX || !(await chrome.permissions.contains({ permissions: ['tabs'] }))) return;
-  const urls = (await chrome.tabs.query({})).map((tab) => tab.url).filter(Boolean);
+  if (IS_FIREFOX) return;
+  const urls = (await chrome.permissions.contains({ permissions: ['tabs'] }))
+    ? (await chrome.tabs.query({})).map((tab) => tab.url).filter(Boolean)
+    : [];
   const { siteRules, pausedBySites, allowedBySites } = await chrome.storage.local.get({ siteRules: {}, pausedBySites: [], allowedBySites: [] });
   const plan = planSiteRules({
     urls, rules: siteRules, exts: await installedExtensions(), paused: pausedBySites, allowed: allowedBySites,
   });
-  for (const id of plan.disable) await chrome.management.setEnabled(id, false).catch(console.warn);
-  for (const id of plan.enable) await chrome.management.setEnabled(id, true).catch(console.warn);
-  await chrome.storage.local.set({ pausedBySites: plan.paused, allowedBySites: plan.allowed });
+  // Saved before anything is turned off: if the service worker stops halfway,
+  // the next run still knows which extensions are ours to turn back on.
+  // Extensions about to be turned on stay listed until they are.
+  if (plan.disable.length) {
+    await chrome.storage.local.set({ pausedBySites: [...new Set([...plan.paused, ...plan.enable])], allowedBySites: plan.allowed });
+  }
+  const failed = new Set();
+  for (const id of plan.disable) await chrome.management.setEnabled(id, false).catch((err) => { failed.add(id); console.warn(err); });
+  for (const id of plan.enable) await chrome.management.setEnabled(id, true).catch((err) => { failed.add(id); console.warn(err); });
+  // A failed turn-off isn't ours; a failed turn-on stays listed and is tried again.
+  const paused = [...plan.paused.filter((id) => !failed.has(id) || !plan.disable.includes(id)),
+    ...plan.enable.filter((id) => failed.has(id))];
+  await chrome.storage.local.set({ pausedBySites: paused, allowedBySites: plan.allowed });
 }
 
 // A scan or store check that is queued but hasn't started yet takes in later
@@ -270,7 +300,7 @@ chrome.runtime.onStartup.addListener(() => {
   ensureAlarm();
   serial(forgetMissing);
   // Tabs restored at startup don't always report their address as an update.
-  serial(applySiteRules);
+  siteSerial(applySiteRules);
   queueScan();
 });
 
@@ -311,6 +341,7 @@ const handlers = {
     await chrome.storage.local.set({ alerts: next });
     await updateBadge(next);
   },
+  // Runs on the site queue (see onMessage).
   async setSites({ extId, sites }) {
     const { siteRules } = await chrome.storage.local.get({ siteRules: {} });
     if (sites.length) siteRules[extId] = sites;
@@ -327,17 +358,25 @@ const handlers = {
 };
 
 if (!IS_FIREFOX) {
-  const siteCheck = () => serial(applySiteRules);
+  const siteCheck = () => siteSerial(applySiteRules);
   chrome.tabs.onUpdated.addListener((_id, change) => { if (change.url) siteCheck(); });
   chrome.tabs.onRemoved.addListener(siteCheck);
   chrome.permissions.onAdded.addListener(siteCheck);
+  chrome.permissions.onRemoved.addListener(siteCheck);
+  // Every time the service worker wakes, including at browser startup, where
+  // restored tabs don't always report their address as an update. This also
+  // turns back on anything left off when the worker stopped mid-change.
+  siteCheck();
 }
 
 chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
   const handler = handlers[msg?.type];
   if (!handler) return false;
   // `scan` queues its own steps; the rest edit storage and must wait their turn.
-  const run = msg.type === 'scan' ? handler(msg) : serial(() => handler(msg));
+  let run;
+  if (msg.type === 'scan') run = handler(msg);
+  else if (msg.type === 'setSites') run = siteSerial(() => handler(msg));
+  else run = serial(() => handler(msg));
   run.then(() => sendResponse({ ok: true }), (err) => sendResponse({ ok: false, error: err.message }));
   return true;
 });
