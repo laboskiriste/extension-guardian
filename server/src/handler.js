@@ -74,10 +74,13 @@ async function lookup(id, { fetchImpl, cache, budget = null }) {
   else if (!res.ok) return { status: 'error', code: res.status };
   else info = parseStorePage(await res.text());
 
-  // A listed page always names its developer. Without one the store layout
-  // has probably changed: an error makes the extension keep its last good
-  // data instead of silently losing the owner check.
-  if (info.status === 'ok' && !info.offeredBy && !info.developerName) return { status: 'error', code: 'parse' };
+  // A listed page always shows something about its developer: a name, an
+  // email or at least a website (Trocker's shows only a website). With none
+  // of them the store layout has probably changed: an error makes the
+  // extension keep its last good data instead of silently losing the owner check.
+  if (info.status === 'ok' && !info.offeredBy && !info.developerName && !info.email && !info.website) {
+    return { status: 'error', code: 'parse' };
+  }
 
   info.checkedAt = Date.now();
   // Only listed extensions are cached. Anyone can ask about made-up ids, and

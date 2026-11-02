@@ -198,4 +198,11 @@ test('a listed page with no developer is an error, not a result', async () => {
   const { results } = await (await get(`/v1/store?ids=${id}`)).json();
   assert.deepEqual(results[id], { status: 'error', code: 'parse' });
   assert.equal(memory.has(`https://cache.internal/store/${id}`), false);
+
+  // A developer shown only by a website, as on Trocker's page, is fine.
+  const site = 'm'.repeat(32);
+  pages[site] = '<title>Trocker - Chrome Web Store</title><li><div>Developer</div><div><a href="https://trockerapp.github.io/">Website</a></div></li>';
+  const ok = (await (await get(`/v1/store?ids=${site}`)).json()).results[site];
+  assert.equal(ok.status, 'ok');
+  assert.equal(ok.website, 'trockerapp.github.io');
 });
