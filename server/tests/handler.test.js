@@ -186,3 +186,16 @@ test('the site links to the rest of Tinyward', async () => {
   assert.match(home, /Also from Tinyward: Unseen/);
   assert.match(home, /A Tinyward project/);
 });
+
+test('"not found" answers are not cached, so made-up ids use no KV writes', async () => {
+  await get(`/v1/store?ids=${MISSING}`);
+  assert.equal(memory.has(`https://cache.internal/store/${MISSING}`), false);
+});
+
+test('a listed page with no developer is an error, not a result', async () => {
+  const id = 'n'.repeat(32);
+  pages[id] = '<title>Some Tool - Chrome Web Store</title><div>Version</div><div>1.0</div>';
+  const { results } = await (await get(`/v1/store?ids=${id}`)).json();
+  assert.deepEqual(results[id], { status: 'error', code: 'parse' });
+  assert.equal(memory.has(`https://cache.internal/store/${id}`), false);
+});

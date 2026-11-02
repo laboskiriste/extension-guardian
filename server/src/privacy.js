@@ -28,7 +28,7 @@ export const PRIVACY_HTML = `<!doctype html>
 </head>
 <body>
 <h1>Extension Guardian – Privacy Policy</h1>
-<p class="muted">Effective October 31, 2026</p>
+<p class="muted">Effective November 2, 2026</p>
 
 <p>Extension Guardian checks the other extensions installed in your browser and warns you when one looks risky.
 It is built to need as little of your data as possible. This page explains exactly what it uses.</p>
@@ -49,7 +49,8 @@ or your browser, no browsing history, no website content and no cookies.</p>
 <p>The server keeps the public store information for each extension ID for up to 6 hours, so that it does not ask the Chrome Web Store again
 for every request. It does not record which IDs came from which person.</p>
 <p>The server runs on Cloudflare Workers. Like any website, Cloudflare receives your IP address when the extension connects, and processes it
-under the <a href="https://www.cloudflare.com/privacypolicy/">Cloudflare Privacy Policy</a> to operate and protect its network. We do not log or store IP addresses.</p>
+under the <a href="https://www.cloudflare.com/privacypolicy/">Cloudflare Privacy Policy</a> to operate and protect its network. To keep one address from overloading the server, Cloudflare counts how many
+store lookups each IP address makes per minute; the count is dropped after the minute, and we never see it. We do not log or store IP addresses.</p>
 
 <h2>In Firefox</h2>
 <p>The Firefox version doesn't use our server. To check developers it asks Firefox Add-ons (addons.mozilla.org) directly for the public

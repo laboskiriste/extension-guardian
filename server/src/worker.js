@@ -20,8 +20,11 @@ function kvCache(kv) {
   };
 }
 
+// Requests per IP address per minute (binding RATE_LIMITER, see wrangler.toml).
+const limiter = (rl) => rl && (async (ip) => (await rl.limit({ key: ip })).success);
+
 export default {
   fetch(request, env) {
-    return handleRequest(request, { cache: kvCache(env.STORE_CACHE) });
+    return handleRequest(request, { cache: kvCache(env.STORE_CACHE), limit: limiter(env.RATE_LIMITER) });
   },
 };

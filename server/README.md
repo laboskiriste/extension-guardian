@@ -2,7 +2,7 @@
 
 A Cloudflare Worker at https://app.extensionguardian.workers.dev. It reads public Chrome Web Store pages for the Chrome extension, because Chrome doesn't let extensions read the store, and it serves the web checker site.
 
-It has no build step and no runtime dependencies. It keeps no logs and no analytics: `[observability]` is off in `wrangler.toml`, and nothing in the code records IP addresses.
+It has no build step and no runtime dependencies. It keeps no logs and no analytics: `[observability]` is off in `wrangler.toml`, and nothing in the code records IP addresses. A Cloudflare rate limiter (`RATE_LIMITER` in `wrangler.toml`) counts store lookups per IP address for one minute; the count isn't readable or kept.
 
 ## Commands
 

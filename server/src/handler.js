@@ -45,10 +45,20 @@ function json(body, status = 200, cacheControl = NO_STORE) {
   });
 }
 
+// The cache is a help, never a requirement: if KV fails or its daily write
+// quota runs out, lookups go to the store and results are still served.
+async function cached(cache, key) {
+  try {
+    return await (await cache?.match(key))?.json();
+  } catch {
+    return undefined;
+  }
+}
+
 async function lookup(id, { fetchImpl, cache, budget = null }) {
   const key = `https://cache.internal/store/${id}`;
-  const hit = await cache?.match(key);
-  if (hit) return hit.json();
+  const hit = await cached(cache, key);
+  if (hit) return hit;
   if (budget) {
     if (budget.left <= 0) return { status: 'error', code: 'busy' };
     budget.left -= 1;
@@ -64,10 +74,19 @@ async function lookup(id, { fetchImpl, cache, budget = null }) {
   else if (!res.ok) return { status: 'error', code: res.status };
   else info = parseStorePage(await res.text());
 
+  // A listed page always names its developer. Without one the store layout
+  // has probably changed: an error makes the extension keep its last good
+  // data instead of silently losing the owner check.
+  if (info.status === 'ok' && !info.offeredBy && !info.developerName) return { status: 'error', code: 'parse' };
+
   info.checkedAt = Date.now();
-  await cache?.put(key, new Response(JSON.stringify(info), {
-    headers: { 'Content-Type': 'application/json', 'Cache-Control': `max-age=${CACHE_SECONDS}` },
-  }));
+  // Only listed extensions are cached. Anyone can ask about made-up ids, and
+  // caching those "not found" answers would use up the daily KV writes.
+  if (info.status === 'ok') {
+    await cache?.put(key, new Response(JSON.stringify(info), {
+      headers: { 'Content-Type': 'application/json', 'Cache-Control': `max-age=${CACHE_SECONDS}` },
+    })).catch(() => {});
+  }
   return info;
 }
 
@@ -105,8 +124,8 @@ const failed = () => ({ status: 'error', code: 'unreachable' });
 
 // The public checker site: home page, one page per extension, popular list,
 // and what search engines need to find them. Returns null for other paths.
-async function checkerPage(url, { fetchImpl, cache }) {
-  const safeLookup = (id) => lookup(id, { fetchImpl, cache }).catch(failed);
+async function checkerPage(url, { fetchImpl, cache, limited }) {
+  const safeLookup = async (id) => ((await limited()) ? { status: 'error', code: 'busy' } : lookup(id, { fetchImpl, cache }).catch(failed));
   if (url.pathname === '/') {
     // The query is echoed back in the form, so a pasted novel is cut short.
     const query = (url.searchParams.get('q') ?? '').slice(0, MAX_QUERY);
@@ -170,13 +189,28 @@ export async function handleRequest(request, options) {
   return response;
 }
 
-async function route(request, { fetchImpl = fetch, cache = null } = {}) {
+const TOO_MANY = () => {
+  const res = json({ error: 'too many requests, try again in a minute' }, 429);
+  res.headers.set('Retry-After', '60');
+  return res;
+};
+
+// `limit(ip)` answers false once an address has asked too often in the last
+// minute (a Cloudflare rate limiter; the count is kept for a minute and not logged).
+async function route(request, { fetchImpl = fetch, cache = null, limit = null } = {}) {
   if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: { ...CORS, 'Access-Control-Max-Age': '86400' } });
   const url = new URL(request.url);
   const read = request.method === 'GET' || request.method === 'HEAD';
+  // Only asked once per request, and only for requests that look up the store.
+  let allowed;
+  const limited = async () => {
+    if (!limit) return false;
+    allowed ??= await limit(request.headers.get('CF-Connecting-IP') ?? '').catch(() => true);
+    return !allowed;
+  };
   if (read && url.pathname === '/privacy') return html(PRIVACY_HTML);
   if (read) {
-    const page = await checkerPage(url, { fetchImpl, cache });
+    const page = await checkerPage(url, { fetchImpl, cache, limited });
     if (page) return page;
   }
   if (read && !url.pathname.startsWith('/v1/')) return html(renderNotFoundPage(), 404, 'public, max-age=300');
@@ -186,6 +220,7 @@ async function route(request, { fetchImpl = fetch, cache = null } = {}) {
   if (!ids.length) return json({ error: 'pass extension ids as ?ids=a,b,c' }, 400);
   if (ids.length > MAX_IDS) return json({ error: `at most ${MAX_IDS} ids per request` }, 400);
 
+  if (await limited()) return TOO_MANY();
   const budget = { left: MAX_STORE_FETCHES };
   const infos = await mapLimited(ids, CONCURRENCY, (id) =>
     lookup(id, { fetchImpl, cache, budget }).catch(failed));

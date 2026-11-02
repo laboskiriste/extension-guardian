@@ -10,3 +10,13 @@ id = "b1eee5f923c74db2962b68682ec6410a"
 # No request logs: the privacy policy says we store no IP addresses.
 [observability]
 enabled = false
+
+# At most 30 store lookups per IP address per minute. Cloudflare keeps the
+# count for the period only; we don't log or store addresses.
+[[ratelimits]]
+name = "RATE_LIMITER"
+namespace_id = "1001"
+
+  [ratelimits.simple]
+  limit = 30
+  period = 60

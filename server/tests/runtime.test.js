@@ -80,14 +80,42 @@ test('the Worker caches store lookups in KV with at least a 60 second TTL', asyn
 
   // The Worker uses the global fetch for the store; stand in for it here.
   const realFetch = globalThis.fetch;
-  globalThis.fetch = async () => new Response('', { status: 404 });
+  globalThis.fetch = async () => new Response('<title>X - Chrome Web Store</title><li><div>Developer</div><div><div>Alice<br>Street 1</div></div></li>');
   try {
     const { results } = await (await worker.fetch(new Request(`http://x/v1/store?ids=${ID}`), { STORE_CACHE: kv })).json();
-    assert.equal(results[ID].status, 'not_found');
+    assert.equal(results[ID].developerName, 'Alice');
   } finally {
     globalThis.fetch = realFetch;
   }
   assert.equal(puts.length, 1);
   assert.equal(puts[0].key, `https://cache.internal/store/${ID}`);
   assert.equal(puts[0].options.expirationTtl, 6 * 60 * 60);
+});
+
+test('a failing KV never fails the lookup', async () => {
+  const kv = { get: async () => { throw new Error('KV down'); }, put: async () => { throw new Error('quota'); } };
+  const realFetch = globalThis.fetch;
+  globalThis.fetch = async () => new Response('<title>X - Chrome Web Store</title><li><div>Developer</div><div><div>Alice<br>Street 1</div></div></li>');
+  try {
+    const { results } = await (await worker.fetch(new Request(`http://x/v1/store?ids=${ID}`), { STORE_CACHE: kv })).json();
+    assert.equal(results[ID].status, 'ok');
+    assert.equal(results[ID].developerName, 'Alice');
+  } finally {
+    globalThis.fetch = realFetch;
+  }
+});
+
+test('the Worker limits store lookups per IP address', async () => {
+  const seen = [];
+  const RATE_LIMITER = { limit: async ({ key }) => { seen.push(key); return { success: false }; } };
+  const req = (path) => new Request(`http://x${path}`, { headers: { 'CF-Connecting-IP': '203.0.113.9' } });
+  const res = await worker.fetch(req(`/v1/store?ids=${ID}`), { RATE_LIMITER });
+  assert.equal(res.status, 429);
+  assert.equal(res.headers.get('Retry-After'), '60');
+  assert.deepEqual(seen, ['203.0.113.9']);
+  // Pages that don't look anything up are never limited.
+  assert.equal((await worker.fetch(req('/popular'), { RATE_LIMITER })).status, 200);
+  assert.equal(seen.length, 1);
+  // The checker page says it's busy instead of looking up the store.
+  assert.equal((await worker.fetch(req(`/extension/${ID}`), { RATE_LIMITER })).status, 503);
 });
