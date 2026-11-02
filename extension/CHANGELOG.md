@@ -21,6 +21,14 @@ Draft notes. The version in `manifest.json` is still 0.1.4.
 - **More permissions explained**, such as passkey access (`webAuthenticationProxy`), user scripts, recently closed tabs and your account email.
 - **Store parser:** reads "1 user" and decodes more HTML entities in developer names. This parser also runs on the server, so it applies there after the next deploy.
 - **Welcome page:** mentions Keep off on these sites (Chrome) and links to the source code and privacy policy.
+- **New owner detection:** a sale to a company is no longer missed. Non-trader listings show only "Offered by" and trader listings only the legal name, so when an extension switches from one to the other the two names are now compared. A developer registering as a business under the same name (or "Ltd", "Inc." and so on) isn't flagged; a new name with the same email is a medium alert.
+- **Firefox:** adding or removing a co-author is a medium "authors changed" alert instead of "may have a new owner". Losing every original author is still a new owner.
+- **Keep off on these sites:** runs on its own queue, so a slow store check never delays turning an extension off when a site opens.
+- **Keep off on these sites:** can't leave an extension off for good. Guardian saves which extensions it turned off before turning them off, checks again every time it wakes, and turns everything back on if you take back the tabs permission.
+- **Keep off on these sites:** the popup says that private windows count only if Guardian is allowed in incognito.
+- **Store checks time out** after 15 seconds instead of waiting indefinitely.
+- **Popup:** when the server answers but could check none of your extensions, it says so instead of "checked just now".
+- **Server (deployed separately):** keeps working when its cache (Workers KV) fails or runs out of daily writes; no longer caches "not found" for made-up ids; limits store lookups to 30 per IP address per minute; treats a listed page with no developer as an error, so a store layout change can't silently turn off owner checks; parses pages several times faster. A daily GitHub Actions canary checks the parser against three known listings.
 
 ## 0.1.4 (2026-10-31)
 
