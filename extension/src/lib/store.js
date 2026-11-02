@@ -89,6 +89,10 @@ function parseDeveloper(block) {
 // with the developer, contact, trader status, version, update date and users.
 // Fields the page doesn't show are null.
 export function parseStorePage(html) {
+  // The first half of the page is inline scripts. Everything we read comes
+  // after <title>, and skipping the rest makes parsing several times faster,
+  // which keeps the server within the Workers CPU limit.
+  html = html.slice(Math.max(0, html.indexOf('<title>')));
   const title = /<title>([^<]*)<\/title>/.exec(html)?.[1]?.trim();
   const block = developerBlock(html);
   // Pages for removed extensions keep the generic store title and have no details.
@@ -136,6 +140,8 @@ export function parseAmoAddon(addon) {
     title: amoText(addon.name),
     offeredBy: null,
     developerName: authors.join(', ') || null,
+    // Kept as a list too, so adding a co-author isn't read as a new owner.
+    authors,
     developerAddress: null,
     email: amoText(addon.support_email),
     website,
@@ -149,8 +155,13 @@ export function parseAmoAddon(addon) {
   };
 }
 
+// A server or store that never answers would otherwise hold the queue, and
+// every check after it, until Chrome stops the service worker.
+const FETCH_TIMEOUT_MS = 15000;
+const timeout = () => AbortSignal.timeout(FETCH_TIMEOUT_MS);
+
 async function fetchAmoInfo(id, fetchImpl) {
-  const res = await fetchImpl(`${AMO_API}${encodeURIComponent(id)}/?lang=en-US`, { credentials: 'omit' });
+  const res = await fetchImpl(`${AMO_API}${encodeURIComponent(id)}/?lang=en-US`, { credentials: 'omit', signal: timeout() });
   // Unlisted and deleted add-ons answer 401 or 404.
   if (res.status === 404 || res.status === 401) return { status: 'not_found', checkedAt: Date.now() };
   if (!res.ok) throw new Error(`Firefox Add-ons returned ${res.status}`);
@@ -184,7 +195,7 @@ export async function fetchStoreInfoBatch(ids, fetchImpl = fetch) {
   const results = {};
   for (let i = 0; i < ids.length; i += MAX_IDS_PER_REQUEST) {
     const chunk = ids.slice(i, i + MAX_IDS_PER_REQUEST);
-    const res = await fetchImpl(`${API_BASE}/v1/store?ids=${chunk.join(',')}`, { credentials: 'omit' });
+    const res = await fetchImpl(`${API_BASE}/v1/store?ids=${chunk.join(',')}`, { credentials: 'omit', signal: timeout() });
     if (!res.ok) throw new Error(`Guardian server returned ${res.status}`);
     const body = await res.json();
     for (const [id, info] of Object.entries(body.results ?? {})) {

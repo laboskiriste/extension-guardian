@@ -191,6 +191,40 @@ test('a missing field is not an ownership change', () => {
   assert.deepEqual(diffStoreInfo('Test', prev, { status: 'ok', developerName: null, email: 'A@alice.dev' }), []);
 });
 
+test('a sale to a trader is an ownership change, though no field is in both checks', () => {
+  const prev = { status: 'ok', offeredBy: 'Alice', developerName: null, email: 'a@alice.dev', trader: 'non-trader' };
+  const cur = { status: 'ok', offeredBy: null, developerName: 'Growth Media LLC', email: 'hi@growth.example', trader: 'trader' };
+  const changes = diffStoreInfo('Test', prev, cur);
+  assert.equal(changes[0].type, 'ownership_changed');
+  assert.equal(changes[0].from, 'Alice');
+  assert.equal(changes[0].to, 'Growth Media LLC');
+});
+
+test('becoming a trader under the same name is not an ownership change', () => {
+  const prev = { status: 'ok', offeredBy: 'Raymond Hill (gorhill)', developerName: null };
+  for (const name of ['Raymond Hill', 'RAYMOND HILL LTD', 'Raymond Hill, Inc.']) {
+    assert.deepEqual(diffStoreInfo('Test', prev, { status: 'ok', offeredBy: null, developerName: name }), [], name);
+  }
+});
+
+test('a new legal name with the same email is a medium alert, not a new owner', () => {
+  const prev = { status: 'ok', offeredBy: 'darkreader', email: 'support@darkreader.org' };
+  const cur = { status: 'ok', developerName: 'Alexander Shutau', email: 'Support@darkreader.org' };
+  const changes = diffStoreInfo('Test', prev, cur);
+  assert.deepEqual(changes.map((c) => [c.type, c.severity]), [['developer_renamed', 'medium']]);
+});
+
+test('Firefox: a new co-author is a medium alert, losing every author is a new owner', () => {
+  const ff = (authors) => ({ status: 'ok', developerName: authors.join(', '), authors });
+  assert.deepEqual(diffStoreInfo('T', ff(['Alice']), ff(['Alice', 'Bob'])).map((c) => [c.type, c.severity]), [['authors_changed', 'medium']]);
+  assert.match(diffStoreInfo('T', ff(['Alice', 'Bob']), ff(['Bob']))[0].detail, /removed Alice/);
+  assert.deepEqual(diffStoreInfo('T', ff(['Alice']), ff(['alice'])), []);
+  const sold = diffStoreInfo('T', ff(['Alice']), ff(['Growth Media']));
+  assert.deepEqual([sold[0].type, sold[0].from, sold[0].to], ['ownership_changed', 'Alice', 'Growth Media']);
+  // Saved before author lists were kept.
+  assert.deepEqual(diffStoreInfo('T', { status: 'ok', developerName: 'Alice' }, ff(['Alice', 'Bob']))[0].type, 'authors_changed');
+});
+
 // A store page cut down to what parseStorePage reads.
 const storePage = ({ title = 'Tiny Tool', developer, offeredBy, users, updated } = {}) => [
   `<title>${title} - Chrome Web Store</title>`,
