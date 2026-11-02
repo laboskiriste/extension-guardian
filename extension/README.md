@@ -1,6 +1,6 @@
 # Extension Guardian
 
-A browser extension for Chrome (and Edge, Brave) and Firefox that watches your other extensions and warns you when one becomes dangerous. Current version: 0.1.4. Changes are in [CHANGELOG.md](CHANGELOG.md).
+A browser extension for Chrome (and Edge, Brave) and Firefox that watches your other extensions and warns you when one becomes dangerous. Current version: 0.1.5. Changes are in [CHANGELOG.md](CHANGELOG.md).
 
 - **Two ratings** for every installed extension:
   - **Access** (full, limited, basic): what its permissions let it do, explained in plain language.

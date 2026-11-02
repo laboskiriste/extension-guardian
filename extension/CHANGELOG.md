@@ -2,9 +2,7 @@
 
 Versions of the Extension Guardian browser extension. The server and web checker in `../server` are deployed separately and are not listed here.
 
-## 0.1.5 (not released yet)
-
-Draft notes. The version in `manifest.json` is still 0.1.4.
+## 0.1.5 (2026-11-02)
 
 - **Keep off on these sites:** now covers every open tab, not only the active one. A bank left open in a background tab keeps the extension off until that tab is closed or leaves the site. No new permission.
 - **Keep off on these sites:** an extension you turn back on by hand while one of your sites is open now stays on until you close it, instead of being turned off again on the next page.
