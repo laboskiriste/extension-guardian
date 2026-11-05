@@ -1,0 +1,10 @@
+{
+  "extName": {
+    "message": "Extension Guardian: Sicherheitscheck für Add-ons",
+    "description": "Extension name in the store and browser."
+  },
+  "extDescription": {
+    "message": "Prüft, ob deine Erweiterungen sicher sind, und warnt bei neuem Besitzer, neuen Rechten oder wenn eine aus dem Store verschwindet.",
+    "description": "Short store description (max 132 characters)."
+  }
+}

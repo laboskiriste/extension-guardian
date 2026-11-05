@@ -2,6 +2,11 @@
 
 Versions of the Extension Guardian browser extension. The server and web checker in `../server` are deployed separately and are not listed here.
 
+## 0.1.6 (2026-11-05)
+
+- **Store name:** "Extension Guardian: Extension Security Checker", so people searching for extension security find it.
+- **Ten languages in the store:** the name and short description are translated into German, Italian, Spanish, French, Brazilian Portuguese, Polish, Dutch, Turkish and Japanese. The extension itself is still in English.
+
 ## 0.1.5 (2026-11-02)
 
 - **Keep off on these sites:** now covers every open tab, not only the active one. A bank left open in a background tab keeps the extension off until that tab is closed or leaves the site. No new permission.

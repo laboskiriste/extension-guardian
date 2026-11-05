@@ -27,13 +27,13 @@ test('every script parses', () => {
 });
 
 test('the zip holds only what the extension runs', () => {
-  // `npm run package` zips manifest.json, icons/ and src/.
+  // `npm run package` zips manifest.json, _locales/, icons/ and src/.
   for (const file of [...filesIn('icons'), ...filesIn('src')]) {
     assert.match(file, /\.(js|html|css|png)$/, file);
     assert.ok(!/(^|\/)\./.test(file), `hidden file ${file}`);
     assert.ok(!/\.test\.js$/.test(file), `test file ${file}`);
   }
-  assert.match(JSON.parse(readFileSync(join(root, 'package.json'), 'utf8')).scripts.package, /zip -qr \S+ manifest\.json icons src &&/);
+  assert.match(JSON.parse(readFileSync(join(root, 'package.json'), 'utf8')).scripts.package, /zip -qr \S+ manifest\.json _locales icons src &&/);
 });
 
 test('files the manifest and pages point to exist', () => {
@@ -69,7 +69,6 @@ test('the Firefox manifest', () => {
   assert.deepEqual(ff.permissions, manifest.permissions);
   assert.equal(ff.browser_specific_settings.gecko.id, 'extension-guardian@laboskiriste');
   assert.deepEqual(ff.browser_specific_settings.gecko.data_collection_permissions, { required: ['none'] });
-  assert.doesNotMatch(ff.description, /Chrome/);
-  assert.ok(ff.description.length <= 132, 'fits the store limit');
+  assert.equal(ff.description, '__MSG_extDescription__', 'the same store-neutral text as Chrome');
   assert.ok(manifest.background.service_worker, 'the Chrome manifest is left alone');
 });

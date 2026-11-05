@@ -6,7 +6,6 @@ export function firefoxManifest(chromeManifest) {
   delete manifest.minimum_chrome_version;
   // "Keep off on these sites" can't work in Firefox, so it never asks for tabs.
   delete manifest.optional_permissions;
-  manifest.description = manifest.description.replace('the Chrome Web Store', 'the store');
   manifest.background = { scripts: [manifest.background.service_worker], type: 'module' };
   manifest.browser_specific_settings = {
     gecko: {

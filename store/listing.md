@@ -13,17 +13,19 @@ To publish a new version later: raise `version` in `manifest.json`, run `npm run
 
 ## Store listing tab
 
-**Name** (from manifest)
+**Name** (from `_locales/en`, translated in nine more languages since 0.1.6)
 
 ```
-Extension Guardian
+Extension Guardian: Extension Security Checker
 ```
 
-**Summary** (from manifest, max 132 characters)
+**Summary** (from `_locales/en`, max 132 characters)
 
 ```
-Warns you when an extension is risky, changes owner, gains new permissions or disappears from the Chrome Web Store.
+Checks if your extensions are safe, and warns you when one changes owner, gains new permissions or disappears from its store.
 ```
+
+In the other languages the store shows this English description. If it asks for a detailed description per language, paste the English one.
 
 **Description**
 

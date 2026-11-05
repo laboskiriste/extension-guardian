@@ -10,11 +10,12 @@ const manifest = firefoxManifest(JSON.parse(readFileSync(`${root}manifest.json`,
 
 rmSync(out, { recursive: true, force: true });
 mkdirSync(out, { recursive: true });
+cpSync(`${root}_locales`, `${out}_locales`, { recursive: true });
 cpSync(`${root}icons`, `${out}icons`, { recursive: true });
 cpSync(`${root}src`, `${out}src`, { recursive: true });
 writeFileSync(`${out}manifest.json`, `${JSON.stringify(manifest, null, 2)}\n`);
 
 const zip = `${root}../store/extension-guardian-${manifest.version}-firefox.zip`;
 rmSync(zip, { force: true });
-execFileSync('zip', ['-qr', zip, 'manifest.json', 'icons', 'src'], { cwd: out });
+execFileSync('zip', ['-qr', zip, 'manifest.json', '_locales', 'icons', 'src'], { cwd: out });
 console.log(zip);
