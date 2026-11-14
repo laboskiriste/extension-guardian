@@ -13,7 +13,7 @@ import { findIncident, INCIDENTS } from './incidents.js';
 import { POPULAR } from './popular.js';
 import { REPORT } from './report-data.js';
 import { OG_DEFAULT, OG_REPORT } from './og-images.js';
-import { TINYWARD_HOSTS, TINYWARD_FAVICON, renderTinywardHome } from './tinyward.js';
+import { TINYWARD_HOSTS, TINYWARD_FAVICON, TINYWARD_ICONS, renderTinywardHome } from './tinyward.js';
 
 const MAX_IDS = 40;
 // The Workers free plan allows 50 outgoing requests per call, and each store
@@ -220,6 +220,10 @@ async function route(request, { fetchImpl = fetch, cache = null, limit = null } 
     if (url.hostname !== TINYWARD_HOSTS[0]) return redirect(`https://${TINYWARD_HOSTS[0]}${url.pathname}${url.search}`, 301, STATIC);
     if (url.pathname === '/') return html(renderTinywardHome());
     if (url.pathname === FAVICON_PATH) return text(TINYWARD_FAVICON, 'image/svg+xml', 'public, max-age=86400');
+    if (TINYWARD_ICONS[url.pathname]) {
+      const png = Uint8Array.from(atob(TINYWARD_ICONS[url.pathname]), (c) => c.charCodeAt(0));
+      return new Response(png, { headers: { 'Content-Type': 'image/png', 'Cache-Control': 'public, max-age=86400' } });
+    }
     return html(renderNotFoundPage(), 404, 'public, max-age=300');
   }
   // The old address keeps its API for installed extensions; its pages moved.

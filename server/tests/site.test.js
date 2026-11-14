@@ -371,4 +371,7 @@ test('tinyward.org serves the family home page', async () => {
   assert.match(htmlText, /unseen\.tinyward\.org/);
   assert.equal((await at('https://www.tinyward.org/')).headers.get('Location'), 'https://tinyward.org/');
   assert.equal((await at('https://tinyward.org/v1/store?ids=x')).status, 404);
+  const png = await at('https://tinyward.org/icons/unseen.png');
+  assert.equal(png.headers.get('Content-Type'), 'image/png');
+  assert.match(htmlText, /src="\/icons\/extension-guardian\.png"/);
 });
