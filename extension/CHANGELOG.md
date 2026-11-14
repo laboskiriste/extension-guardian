@@ -6,6 +6,7 @@ Versions of the Extension Guardian browser extension. The server and web checker
 
 - **Share the checker:** after two weeks, and only once you've answered the rating card, the popup offers once to copy a link to the free web checker. Nothing is sent and the link has no referral code. Not shown on Firefox, where the checker doesn't apply.
 - **More from Tinyward:** the Firefox version links to Unseen's Firefox add-on instead of its website.
+- **New address:** links point to guardian.tinyward.org. The extension still checks developers through the same server address as before.
 
 ## 0.1.6 (2026-11-05)
 

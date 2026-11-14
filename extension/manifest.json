@@ -4,7 +4,7 @@
   "version": "0.1.7",
   "description": "__MSG_extDescription__",
   "default_locale": "en",
-  "homepage_url": "https://app.extensionguardian.workers.dev",
+  "homepage_url": "https://guardian.tinyward.org",
   "minimum_chrome_version": "116",
   "permissions": ["management", "storage", "alarms", "notifications"],
   "optional_permissions": ["tabs"],
