@@ -353,7 +353,7 @@ test('favicon and web manifest', async () => {
 
 // --- domains
 
-test.skip('the old address redirects pages to guardian.tinyward.org but keeps the API', async () => {
+test('the old address redirects pages to guardian.tinyward.org but keeps the API', async () => {
   const old = (path) => handleRequest(new Request(`https://app.extensionguardian.workers.dev${path}`), { fetchImpl: store(), cache: null });
   const page = await old('/popular?x=1');
   assert.equal(page.status, 301);

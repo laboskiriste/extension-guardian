@@ -37,8 +37,6 @@ const CORS = {
 // API results never do: the extension keeps its own copy, and a "busy" or
 // "error" result must not stick when it retries.
 const STATIC = 'public, max-age=3600';
-// Off until guardian.tinyward.org resolves everywhere (new domain, 14.11.2026).
-const REDIRECT_OLD_HOST = false;
 const SHORT = 'public, max-age=600';
 const NO_STORE = 'no-store';
 
@@ -226,7 +224,7 @@ async function route(request, { fetchImpl = fetch, cache = null, limit = null } 
   }
   // The old address keeps its API for installed extensions; its pages moved.
   // The Search Console file stays so the old property keeps its history.
-  if (REDIRECT_OLD_HOST && read && url.hostname === OLD_HOST && !url.pathname.startsWith('/v1/') && url.pathname !== `/${GOOGLE_VERIFICATION}`) {
+  if (read && url.hostname === OLD_HOST && !url.pathname.startsWith('/v1/') && url.pathname !== `/${GOOGLE_VERIFICATION}`) {
     return redirect(`${SITE}${url.pathname}${url.search}`, 301, STATIC);
   }
   if (read && url.pathname === '/privacy') return html(PRIVACY_HTML);
