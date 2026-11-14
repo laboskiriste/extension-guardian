@@ -183,7 +183,7 @@ function ratePrompt() {
 // link to the free web checker to pass on. Nothing is sent; no referral code.
 // Not on Firefox: the checker covers the Chrome Web Store only.
 const SHARE_AFTER_MS = 14 * 24 * 60 * 60 * 1000;
-const CHECKER_URL = 'https://app.extensionguardian.workers.dev';
+const CHECKER_URL = 'https://guardian.tinyward.org';
 
 function showSharePrompt() {
   return !IS_FIREFOX && !!data.ratePrompt && !data.sharePrompt && data.installedAt && Date.now() - data.installedAt >= SHARE_AFTER_MS

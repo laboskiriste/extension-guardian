@@ -8,7 +8,7 @@ globalThis.TINYWARD = {
       "short": "Warns you when an extension you use is sold.",
       "chrome": "https://chromewebstore.google.com/detail/extension-guardian/mpceklcidiadoneogfmpkjpadihmlcjd",
       "firefox": "https://addons.mozilla.org/firefox/addon/extension-guardian/",
-      "website": "https://app.extensionguardian.workers.dev"
+      "website": "https://guardian.tinyward.org"
     },
     {
       "id": "unseen",
@@ -16,7 +16,7 @@ globalThis.TINYWARD = {
       "short": "Blocks email trackers in Gmail.",
       "chrome": "https://chromewebstore.google.com/detail/unseen-email-tracker-bloc/fibpgcjlnnookmhclhpmhmajileledhd",
       "firefox": "https://addons.mozilla.org/firefox/addon/unseen-email-tracker-blocker/",
-      "website": "https://laboskiriste.github.io/unseen/"
+      "website": "https://unseen.tinyward.org/"
     }
   ]
 };

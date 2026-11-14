@@ -7,11 +7,13 @@ import { PRIVACY_HTML } from './privacy.js';
 import {
   extractId, extensionPath, renderCheckPage, renderHowPage, renderSellPage, renderIncidentPage, renderIncidentsPage, renderNotFoundPage, renderPopularPage, renderReportPage, renderSitemap,
   REPORT_PATH, OG_DEFAULT_PATH, OG_REPORT_PATH, ROBOTS, FAVICON_PATH, FAVICON_SVG, HOW_PATH, INCIDENTS_PATH, SELL_PATH, MANIFEST, MANIFEST_PATH,
+  SITE, OLD_HOST,
 } from './check-page.js';
 import { findIncident, INCIDENTS } from './incidents.js';
 import { POPULAR } from './popular.js';
 import { REPORT } from './report-data.js';
 import { OG_DEFAULT, OG_REPORT } from './og-images.js';
+import { TINYWARD_HOSTS, TINYWARD_FAVICON, renderTinywardHome } from './tinyward.js';
 
 const MAX_IDS = 40;
 // The Workers free plan allows 50 outgoing requests per call, and each store
@@ -35,6 +37,8 @@ const CORS = {
 // API results never do: the extension keeps its own copy, and a "busy" or
 // "error" result must not stick when it retries.
 const STATIC = 'public, max-age=3600';
+// Off until guardian.tinyward.org resolves everywhere (new domain, 14.11.2026).
+const REDIRECT_OLD_HOST = false;
 const SHORT = 'public, max-age=600';
 const NO_STORE = 'no-store';
 
@@ -212,6 +216,19 @@ async function route(request, { fetchImpl = fetch, cache = null, limit = null } 
     allowed ??= await limit(request.headers.get('CF-Connecting-IP') ?? '').catch(() => true);
     return !allowed;
   };
+  // tinyward.org is the family home page; www goes to the bare domain.
+  if (TINYWARD_HOSTS.includes(url.hostname)) {
+    if (!read) return json({ error: 'not found' }, 404);
+    if (url.hostname !== TINYWARD_HOSTS[0]) return redirect(`https://${TINYWARD_HOSTS[0]}${url.pathname}${url.search}`, 301, STATIC);
+    if (url.pathname === '/') return html(renderTinywardHome());
+    if (url.pathname === FAVICON_PATH) return text(TINYWARD_FAVICON, 'image/svg+xml', 'public, max-age=86400');
+    return html(renderNotFoundPage(), 404, 'public, max-age=300');
+  }
+  // The old address keeps its API for installed extensions; its pages moved.
+  // The Search Console file stays so the old property keeps its history.
+  if (REDIRECT_OLD_HOST && read && url.hostname === OLD_HOST && !url.pathname.startsWith('/v1/') && url.pathname !== `/${GOOGLE_VERIFICATION}`) {
+    return redirect(`${SITE}${url.pathname}${url.search}`, 301, STATIC);
+  }
   if (read && url.pathname === '/privacy') return html(PRIVACY_HTML);
   if (read) {
     const page = await checkerPage(url, { fetchImpl, cache, limited });

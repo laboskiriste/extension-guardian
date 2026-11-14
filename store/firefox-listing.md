@@ -74,7 +74,7 @@ https://github.com/laboskiriste/extension-guardian/issues
 **Homepage**
 
 ```
-https://app.extensionguardian.workers.dev/
+https://guardian.tinyward.org/
 ```
 
 **License**: MIT License
@@ -82,7 +82,7 @@ https://app.extensionguardian.workers.dev/
 **Privacy policy**: "This add-on has a privacy policy" → paste:
 
 ```
-Extension Guardian keeps your list of add-ons and all results on your device. To check developers, it asks the public Firefox Add-ons API (addons.mozilla.org) for each installed add-on's listing by its ID. Nothing is sent to the developer of Extension Guardian. No ads, analytics or tracking. Full policy: https://app.extensionguardian.workers.dev/privacy
+Extension Guardian keeps your list of add-ons and all results on your device. To check developers, it asks the public Firefox Add-ons API (addons.mozilla.org) for each installed add-on's listing by its ID. Nothing is sent to the developer of Extension Guardian. No ads, analytics or tracking. Full policy: https://guardian.tinyward.org/privacy
 ```
 
 **Notes to reviewer**

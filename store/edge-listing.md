@@ -21,13 +21,13 @@ The same package works in Edge. Upload `extension-guardian-0.1.2.zip` (rebuild w
 **Privacy policy**: Yes, this extension requires a privacy policy
 
 ```
-https://app.extensionguardian.workers.dev/privacy
+https://guardian.tinyward.org/privacy
 ```
 
 **Website URL**
 
 ```
-https://app.extensionguardian.workers.dev/
+https://guardian.tinyward.org/
 ```
 
 **Support contact details**
@@ -101,7 +101,7 @@ spyware
 ```
 Extension Guardian reads the list of installed extensions with the management permission and rates each one. It changes another extension only when the user asks: by clicking Turn off or Remove in the popup, or through a "Keep off on these sites" rule the user set up (optional tabs permission, requested only then).
 
-To test: install a few extensions, open the popup and expand any extension to see its Access and Risk ratings. Press "Check now" to look up developer information. That sends only extension IDs to our server (https://app.extensionguardian.workers.dev/v1/store), which reads the public Chrome Web Store page and returns JSON. No account or sign-in is needed.
+To test: install a few extensions, open the popup and expand any extension to see its Access and Risk ratings. Press "Check now" to look up developer information. That sends only extension IDs to our server (https://guardian.tinyward.org/v1/store), which reads the public Chrome Web Store page and returns JSON. No account or sign-in is needed.
 
 Source code: https://github.com/laboskiriste/extension-guardian
 ```

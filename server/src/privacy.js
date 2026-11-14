@@ -8,14 +8,14 @@ export const PRIVACY_HTML = `<!doctype html>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Extension Guardian – Privacy Policy</title>
 <meta name="description" content="What Extension Guardian and its web checker use, what they send to our server, and what they never do. No analytics, no tracking, no IP logs.">
-<link rel="canonical" href="https://app.extensionguardian.workers.dev/privacy">
+<link rel="canonical" href="https://guardian.tinyward.org/privacy">
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="Extension Guardian">
 <meta property="og:title" content="Extension Guardian – Privacy Policy">
 <meta property="og:description" content="What Extension Guardian uses, what it sends, and what it never does.">
-<meta property="og:url" content="https://app.extensionguardian.workers.dev/privacy">
-<meta property="og:image" content="https://app.extensionguardian.workers.dev/og/default.png">
+<meta property="og:url" content="https://guardian.tinyward.org/privacy">
+<meta property="og:image" content="https://guardian.tinyward.org/og/default.png">
 <meta name="twitter:card" content="summary_large_image">
 <style>
   :root { color-scheme: light dark; }
@@ -57,7 +57,7 @@ store lookups each IP address makes per minute; the count is dropped after the m
 listing of each add-on you have installed, by its ID. Mozilla's own privacy policy covers those requests. Nothing is sent to us.</p>
 
 <h2>The website checker</h2>
-<p>The page at <a href="/">app.extensionguardian.workers.dev</a> checks one extension at a time. It receives only the store link or ID you
+<p>The page at <a href="/">guardian.tinyward.org</a> checks one extension at a time. It receives only the store link or ID you
 paste in, looks up the same public store information, and keeps it for up to 6 hours in the same way. It uses no cookies and no analytics.</p>
 
 <h2>What we never do</h2>

@@ -5,7 +5,7 @@ A browser extension that warns when an installed extension changes owner, gains 
 | Folder | What it is |
 |---|---|
 | `extension/` | The extension. Chrome MV3, with a Firefox build via `dev/package-firefox.mjs`. No build step. |
-| `server/` | A Cloudflare Worker at https://app.extensionguardian.workers.dev. It reads Chrome Web Store pages for the extension and serves the web checker site, the report and the privacy page. |
+| `server/` | A Cloudflare Worker at https://guardian.tinyward.org (also tinyward.org, the family page). The extension calls its API at the old address, app.extensionguardian.workers.dev, which must keep working. It reads Chrome Web Store pages for the extension and serves the web checker site, the report and the privacy page. |
 | `store/` | Store listing text and screenshots for Chrome, Firefox and Edge. Zip files are git-ignored. |
 
 ## Commands

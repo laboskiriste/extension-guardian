@@ -7,7 +7,7 @@ Get warned when a Chrome extension you use is sold, gains new permissions, or di
 
 **[Install from the Chrome Web Store](https://chromewebstore.google.com/detail/extension-guardian/mpceklcidiadoneogfmpkjpadihmlcjd)** · Free · No account · No analytics
 
-Not ready to install anything? **[Check a single extension on the web](https://app.extensionguardian.workers.dev)**: paste its store link to see who makes it, how many people use it, and whether it's maintained. See also the [report on the 150 most popular Chrome extensions](https://app.extensionguardian.workers.dev/report/popular-chrome-extensions-2026) and, for extension developers, [what to do when someone offers to buy your extension](https://app.extensionguardian.workers.dev/developers/offer-to-buy-your-extension).
+Not ready to install anything? **[Check a single extension on the web](https://guardian.tinyward.org)**: paste its store link to see who makes it, how many people use it, and whether it's maintained. See also the [report on the 150 most popular Chrome extensions](https://guardian.tinyward.org/report/popular-chrome-extensions-2026) and, for extension developers, [what to do when someone offers to buy your extension](https://guardian.tinyward.org/developers/offer-to-buy-your-extension).
 
 ![Extension Guardian popup](store/screenshot-1.png)
 
@@ -35,14 +35,14 @@ Every extension gets two ratings:
 
 ## Privacy
 
-Your list of extensions and every result stay on your device. Chrome doesn't let extensions read Chrome Web Store pages, so a small server reads the public store page instead. The extension sends it only extension IDs, which are public identifiers, and nothing about you. It does not log or store IP addresses. [Privacy policy](https://app.extensionguardian.workers.dev/privacy).
+Your list of extensions and every result stay on your device. Chrome doesn't let extensions read Chrome Web Store pages, so a small server reads the public store page instead. The extension sends it only extension IDs, which are public identifiers, and nothing about you. It does not log or store IP addresses. [Privacy policy](https://guardian.tinyward.org/privacy).
 
 ## Repository
 
 | Folder | What it is |
 | --- | --- |
 | [`extension/`](extension) | The browser extension for Chrome and Firefox (Manifest V3, no build step). See its [README](extension/README.md). |
-| [`server/`](server) | Cloudflare Worker that reads Chrome Web Store pages for the extension and serves the [web checker](https://app.extensionguardian.workers.dev), plus a Node dev server |
+| [`server/`](server) | Cloudflare Worker that reads Chrome Web Store pages for the extension and serves the [web checker](https://guardian.tinyward.org), plus a Node dev server |
 | [`store/`](store) | Store listing text and screenshots |
 
 ## Run it locally

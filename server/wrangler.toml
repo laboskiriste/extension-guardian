@@ -2,6 +2,15 @@ name = "app"
 main = "src/worker.js"
 compatibility_date = "2026-10-01"
 
+# The site lives on tinyward.org. The workers.dev address must stay on:
+# installed extensions call its /v1/ API (and its pages redirect).
+workers_dev = true
+routes = [
+  { pattern = "guardian.tinyward.org", custom_domain = true },
+  { pattern = "tinyward.org", custom_domain = true },
+  { pattern = "www.tinyward.org", custom_domain = true },
+]
+
 # Cache for store lookups (see src/worker.js).
 [[kv_namespaces]]
 binding = "STORE_CACHE"

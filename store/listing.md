@@ -118,7 +118,7 @@ Certify all three statements:
 **Privacy policy URL**
 
 ```
-https://app.extensionguardian.workers.dev/privacy
+https://guardian.tinyward.org/privacy
 ```
 
 ## Distribution tab

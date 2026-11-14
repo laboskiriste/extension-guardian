@@ -162,7 +162,7 @@ test('an unexpected failure becomes a plain 500 with security headers', async ()
 
 test('the sitemap lists the main pages once, and robots.txt points to it', async () => {
   const xml = renderSitemap();
-  const locs = [...xml.matchAll(/<loc>https:\/\/app\.extensionguardian\.workers\.dev([^<]*)<\/loc>/g)].map((m) => m[1]);
+  const locs = [...xml.matchAll(/<loc>https:\/\/guardian\.tinyward\.org([^<]*)<\/loc>/g)].map((m) => m[1]);
   for (const path of ['/', '/popular', '/how-it-works', '/developers/offer-to-buy-your-extension', '/incidents', '/privacy', '/report/popular-chrome-extensions-2026']) {
     assert.ok(locs.includes(path), path);
   }
@@ -173,7 +173,7 @@ test('the sitemap lists the main pages once, and robots.txt points to it', async
   for (const path of locs) assert.equal((await get(path)).status, 200, path);
   const robots = await body('/robots.txt');
   assert.match(robots, /Disallow: \/v1\//);
-  assert.match(robots, /Sitemap: https:\/\/app\.extensionguardian\.workers\.dev\/sitemap\.xml/);
+  assert.match(robots, /Sitemap: https:\/\/guardian\.tinyward\.org\/sitemap\.xml/);
 });
 
 // --- Link previews on every page (41)
@@ -349,4 +349,26 @@ test('favicon and web manifest', async () => {
   assert.equal(data.start_url, '/');
   assert.equal(data.icons[0].src, '/favicon.svg');
   assert.match(manifest.headers.get('Content-Security-Policy'), /manifest-src 'self'/);
+});
+
+// --- domains
+
+test.skip('the old address redirects pages to guardian.tinyward.org but keeps the API', async () => {
+  const old = (path) => handleRequest(new Request(`https://app.extensionguardian.workers.dev${path}`), { fetchImpl: store(), cache: null });
+  const page = await old('/popular?x=1');
+  assert.equal(page.status, 301);
+  assert.equal(page.headers.get('Location'), 'https://guardian.tinyward.org/popular?x=1');
+  assert.equal((await old('/v1/store?ids=bad')).status, 400);
+  assert.equal((await old('/google2567422271cb329d.html')).status, 200);
+});
+
+test('tinyward.org serves the family home page', async () => {
+  const at = (url) => handleRequest(new Request(url), { fetchImpl: store(), cache: null });
+  const home = await at('https://tinyward.org/');
+  assert.equal(home.status, 200);
+  const htmlText = await home.text();
+  assert.match(htmlText, /guardian\.tinyward\.org/);
+  assert.match(htmlText, /unseen\.tinyward\.org/);
+  assert.equal((await at('https://www.tinyward.org/')).headers.get('Location'), 'https://tinyward.org/');
+  assert.equal((await at('https://tinyward.org/v1/store?ids=x')).status, 404);
 });

@@ -172,7 +172,10 @@ function resultHtml(id, info) {
   </section>` : ''}${CTA}`;
 }
 
-export const SITE = 'https://app.extensionguardian.workers.dev';
+export const SITE = 'https://guardian.tinyward.org';
+// The first address. The installed extensions call its /v1/ API, so it keeps
+// working; its pages redirect to SITE.
+export const OLD_HOST = 'app.extensionguardian.workers.dev';
 export const OG_DEFAULT_PATH = '/og/default.png';
 export const OG_REPORT_PATH = '/og/report.png';
 export const FAVICON_PATH = '/favicon.svg';
