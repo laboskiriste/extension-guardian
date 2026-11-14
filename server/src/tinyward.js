@@ -87,7 +87,7 @@ ${cards}
     <li>Open source under the MIT licence, so anyone can check.</li>
     <li>Only the permissions the job needs.</li>
   </ul>
-  <footer>Made by an independent developer. <a href="https://mastodon.social/@tinyward">Mastodon</a> · <a href="https://bsky.app/profile/tinyward.bsky.social">Bluesky</a> · <a href="https://github.com/laboskiriste">GitHub</a></footer>
+  <footer>Made by an independent developer. <a href="https://mastodon.social/@tinyward">Mastodon</a> · <a href="https://bsky.app/profile/tinyward.org">Bluesky</a> · <a href="https://github.com/laboskiriste">GitHub</a></footer>
 </main>
 </body>
 </html>`;
