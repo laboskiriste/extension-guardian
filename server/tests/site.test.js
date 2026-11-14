@@ -123,7 +123,7 @@ test('Cache-Control fits each kind of response', async () => {
   const cc = async (path, options) => (await get(path, options)).headers.get('Cache-Control');
   assert.equal(await cc(`/v1/store?ids=${DARK}`), 'no-store');
   assert.equal(await cc('/v1/store?ids=bad'), 'no-store');
-  for (const path of ['/', '/popular', '/privacy', '/how-it-works', '/incidents', '/robots.txt', '/sitemap.xml', '/report/popular-chrome-extensions-2026', '/report/popular-chrome-extensions-2026.json']) {
+  for (const path of ['/', '/popular', '/privacy', '/how-it-works', '/developers/offer-to-buy-your-extension', '/incidents', '/robots.txt', '/sitemap.xml', '/report/popular-chrome-extensions-2026', '/report/popular-chrome-extensions-2026.json']) {
     assert.match(await cc(path), /^public, max-age=\d+$/, path);
   }
   assert.equal(await cc(`/extension/dark-reader/${DARK}`), 'public, max-age=600');

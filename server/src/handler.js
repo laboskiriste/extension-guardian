@@ -5,8 +5,8 @@
 import { parseStorePage } from '../../extension/src/lib/store.js';
 import { PRIVACY_HTML } from './privacy.js';
 import {
-  extractId, extensionPath, renderCheckPage, renderHowPage, renderIncidentPage, renderIncidentsPage, renderNotFoundPage, renderPopularPage, renderReportPage, renderSitemap,
-  REPORT_PATH, OG_DEFAULT_PATH, OG_REPORT_PATH, ROBOTS, FAVICON_PATH, FAVICON_SVG, HOW_PATH, INCIDENTS_PATH, MANIFEST, MANIFEST_PATH,
+  extractId, extensionPath, renderCheckPage, renderHowPage, renderSellPage, renderIncidentPage, renderIncidentsPage, renderNotFoundPage, renderPopularPage, renderReportPage, renderSitemap,
+  REPORT_PATH, OG_DEFAULT_PATH, OG_REPORT_PATH, ROBOTS, FAVICON_PATH, FAVICON_SVG, HOW_PATH, INCIDENTS_PATH, SELL_PATH, MANIFEST, MANIFEST_PATH,
 } from './check-page.js';
 import { findIncident, INCIDENTS } from './incidents.js';
 import { POPULAR } from './popular.js';
@@ -156,6 +156,7 @@ async function checkerPage(url, { fetchImpl, cache, limited }) {
   }
   if (url.pathname === INCIDENTS_PATH) return html(renderIncidentsPage(INCIDENTS));
   if (url.pathname === HOW_PATH) return html(renderHowPage());
+  if (url.pathname === SELL_PATH) return html(renderSellPage());
   if (url.pathname === FAVICON_PATH) return text(FAVICON_SVG, 'image/svg+xml', 'public, max-age=86400');
   if (url.pathname === MANIFEST_PATH) return text(MANIFEST, 'application/manifest+json');
   const incident = findIncident(/^\/incidents\/([a-z0-9-]+)\/?$/.exec(url.pathname)?.[1]);

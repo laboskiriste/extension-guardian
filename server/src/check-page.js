@@ -179,6 +179,7 @@ export const FAVICON_PATH = '/favicon.svg';
 export const MANIFEST_PATH = '/manifest.webmanifest';
 export const HOW_PATH = '/how-it-works';
 export const INCIDENTS_PATH = '/incidents';
+export const SELL_PATH = '/developers/offer-to-buy-your-extension';
 
 export const slugify = (name) => (String(name).split(/\s[-–—:|]\s|:\s/)[0].toLowerCase()
   .replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 50).replace(/-+$/, '')) || 'extension';
@@ -397,7 +398,7 @@ ${structured ? jsonLd(structured) : ''}
 ${body}
 </main>
 <footer class="${wrap}">
-  <a href="${STORE_LINK}">Extension Guardian</a> · <a href="/popular">Popular extensions</a> · <a href="${REPORT_PATH}">Popular extensions report</a> · <a href="${INCIDENTS_PATH}">Incidents</a> · <a href="${HOW_PATH}">How it works</a> · <a href="${GITHUB_LINK}">Source</a> · <a href="/privacy">Privacy</a><br>
+  <a href="${STORE_LINK}">Extension Guardian</a> · <a href="/popular">Popular extensions</a> · <a href="${REPORT_PATH}">Popular extensions report</a> · <a href="${INCIDENTS_PATH}">Incidents</a> · <a href="${HOW_PATH}">How it works</a> · <a href="${SELL_PATH}">For developers</a> · <a href="${GITHUB_LINK}">Source</a> · <a href="/privacy">Privacy</a><br>
   Based only on the public Chrome Web Store listing. Not a malware scan.<br>
   A Tinyward project. Also from Tinyward: <a href="${UNSEEN_LINK}">Unseen</a>, which blocks email tracking pixels in Gmail.
 </footer>
@@ -677,6 +678,55 @@ export function renderHowPage() {
   });
 }
 
+// For extension developers, who get offers to buy or "monetize" their
+// extensions: what the offers usually are and what to check before saying yes.
+const SELL_SECTIONS = [
+  ['What these offers look like', [
+    'A short, friendly email or a message through the store\'s contact link, often from a free email address or a company with no history.',
+    'An offer to buy the extension outright, usually priced per user, and paid in crypto, PayPal or a wire to an unrelated company.',
+    'Or an offer to "monetize" it: you keep the extension and add their SDK or script, and they pay you a monthly amount per active user.',
+    'A request to transfer the item to their developer account, or to add them to your account, so they can publish updates.',
+  ]],
+  ['Why they want it', [
+    'Your users trust you, and Chrome installs updates silently. A buyer gets every permission you were granted, and the next update reaches all your users without asking them.',
+    'Extensions that can read every page are worth the most. Buyers use them for affiliate link injection, ad injection, selling browsing data, or stealing passwords and crypto wallets.',
+    'In 2026, one campaign bought five established extensions from their developers and turned them into wallet and password stealers. See the incidents page for the details.',
+  ]],
+  ['Red flags', [
+    'They don\'t say what they will do with the extension, or the plan is vague ("grow it", "integrate our technology").',
+    'The SDK is closed source, loads code from their server at run time, or needs permissions your extension doesn\'t have yet.',
+    'They pay more per user than any honest use of your users could earn.',
+    'They want the deal kept quiet, or want your name to stay on the listing after the sale.',
+  ]],
+  ['If you do want to sell', [
+    'Selling is legitimate, and many good extensions change hands. Ask for the buyer\'s real name, company, other products and a written plan for the extension.',
+    'Tell your users before the transfer: in the description, in a release note, or in the extension itself. People can then decide whether to stay.',
+    'Check that the new owner will keep the privacy policy and the store\'s data disclosures accurate after the change.',
+    'Never add code you haven\'t read. If you open-sourced the extension, the buyer can\'t hide changes from people who check.',
+  ]],
+];
+
+export function renderSellPage() {
+  const sections = SELL_SECTIONS.map(([title, items]) => `
+  <section class="card">
+    <h2>${escapeHtml(title)}</h2>
+    <ul class="steps">${items.map((item) => `<li>${escapeHtml(item)}</li>`).join('')}</ul>
+  </section>`).join('');
+  return layout({
+    title: 'Someone offered to buy my extension. What should I do? · Extension Guardian',
+    description: 'What offers to buy or monetize a browser extension usually are, why buyers want them, the red flags, and how to sell responsibly if you choose to.',
+    canonical: SELL_PATH,
+    hero: `<h1>Someone offered to buy my extension</h1>
+<p class="lead">If you publish a browser extension with a few thousand users, offers will come. Here's what they usually are, and what to check before you answer.</p>`,
+    body: `${sections}
+  <section class="card">
+    <h2>Real cases</h2>
+    <p class="text">The <a href="${INCIDENTS_PATH}">incidents page</a> lists published reports of extensions that turned malicious, including ones that were bought from their developers. The <a href="${REPORT_PATH}">popular extensions report</a> shows how many widely used extensions can read every page, which is what buyers look for.</p>
+    <p class="note">Received an offer and want to share it? <a href="${GITHUB_LINK}/issues">Open an issue on GitHub</a> (remove anything private). Real examples help other developers recognise these offers.</p>
+  </section>${CTA}`,
+  });
+}
+
 // A shield on the brand green, for the browser tab and home screen.
 export const FAVICON_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><rect width="24" height="24" rx="5" fill="#1f7a4d"/><path fill="#fff" d="M12 3.5 5.5 6v5c0 4.2 2.8 7.8 6.5 9.1 3.7-1.3 6.5-4.9 6.5-9.1V6L12 3.5Z"/><path fill="none" stroke="#1f7a4d" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" d="m8.8 11.9 2.2 2.2 4.2-4.4"/></svg>`;
 
@@ -779,7 +829,7 @@ ${CTA}`,
 
 export function renderSitemap(popular) {
   const extensions = [...popular, ...REPORT.stale].map((e) => extensionPath(e.id, e.name));
-  const urls = [...new Set(['/', '/popular', REPORT_PATH, HOW_PATH, INCIDENTS_PATH, ...INCIDENTS.map(incidentPath), '/privacy', ...extensions])];
+  const urls = [...new Set(['/', '/popular', REPORT_PATH, HOW_PATH, SELL_PATH, INCIDENTS_PATH, ...INCIDENTS.map(incidentPath), '/privacy', ...extensions])];
   return `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
 ${urls.map((u) => `  <url><loc>${SITE}${u}</loc></url>`).join('\n')}
