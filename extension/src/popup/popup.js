@@ -60,7 +60,7 @@ async function load() {
   const [all, stored] = await Promise.all([
     chrome.management.getAll(),
     chrome.storage.local.get({
-      storeInfo: {}, alerts: [], lastStoreCheckAt: null, storeError: null, installedAt: null, ratePrompt: null,
+      storeInfo: {}, alerts: [], lastStoreCheckAt: null, storeError: null, installedAt: null, ratePrompt: null, sharePrompt: null,
       siteRules: {}, pausedBySites: [],
     }),
   ]);
@@ -174,6 +174,31 @@ function ratePrompt() {
       h('a', {
         class: 'link', href: FROM_EDGE_STORE ? edgeStorePageUrl(chrome.runtime.id) : reviewPageUrl(chrome.runtime.id), target: '_blank', onclick: () => answer('rated'),
       }, 'Rate it ↗'),
+      h('button', { class: 'link muted', onclick: () => answer('dismissed') }, 'No thanks'),
+    ),
+  );
+}
+
+// Offered once, after the rating card is answered and two weeks of use: a
+// link to the free web checker to pass on. Nothing is sent; no referral code.
+// Not on Firefox: the checker covers the Chrome Web Store only.
+const SHARE_AFTER_MS = 14 * 24 * 60 * 60 * 1000;
+const CHECKER_URL = 'https://app.extensionguardian.workers.dev';
+
+function showSharePrompt() {
+  return !IS_FIREFOX && !!data.ratePrompt && !data.sharePrompt && data.installedAt && Date.now() - data.installedAt >= SHARE_AFTER_MS
+    && !data.alerts.some((a) => a.severity === 'high');
+}
+
+function sharePrompt() {
+  const answer = async (value) => { await chrome.storage.local.set({ sharePrompt: value }); refresh(); };
+  return h('article', { class: 'alert low rate' },
+    h('strong', {}, 'Know someone with a lot of extensions?'),
+    h('p', {}, 'The free web checker shows who owns any Chrome extension, no install needed. Extension Guardian has no ads or referral codes; a word from you is how people find it.'),
+    h('div', { class: 'actions' },
+      h('button', {
+        class: 'link', onclick: async () => { await navigator.clipboard.writeText(CHECKER_URL).catch(() => {}); answer('copied'); },
+      }, 'Copy link to the checker'),
       h('button', { class: 'link muted', onclick: () => answer('dismissed') }, 'No thanks'),
     ),
   );
@@ -426,6 +451,7 @@ function render() {
     data.storeError && offlineNotice(),
     unseenFirst.length > 0 && h('section', { class: 'alerts' }, h('h2', {}, 'Alerts'), unseenFirst.map(alertCard)),
     showRatePrompt() && ratePrompt(),
+    showSharePrompt() && sharePrompt(),
     h('section', {},
       h('h2', {}, 'Your extensions'),
       extensionList(),

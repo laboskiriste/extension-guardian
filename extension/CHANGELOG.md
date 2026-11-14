@@ -2,6 +2,11 @@
 
 Versions of the Extension Guardian browser extension. The server and web checker in `../server` are deployed separately and are not listed here.
 
+## 0.1.7 (2026-11-14)
+
+- **Share the checker:** after two weeks, and only once you've answered the rating card, the popup offers once to copy a link to the free web checker. Nothing is sent and the link has no referral code. Not shown on Firefox, where the checker doesn't apply.
+- **More from Tinyward:** the Firefox version links to Unseen's Firefox add-on instead of its website.
+
 ## 0.1.6 (2026-11-05)
 
 - **Store name:** "Extension Guardian: Extension Security Checker", so people searching for extension security find it.
