@@ -7,7 +7,7 @@ Get warned when a Chrome extension you use is sold, gains new permissions, or di
 
 **[Install from the Chrome Web Store](https://chromewebstore.google.com/detail/extension-guardian/mpceklcidiadoneogfmpkjpadihmlcjd)** · Free · No account · No analytics
 
-Not ready to install anything? **[Check a single extension on the web](https://app.extensionguardian.workers.dev)**: paste its store link to see who makes it, how many people use it, and whether it's maintained.
+Not ready to install anything? **[Check a single extension on the web](https://app.extensionguardian.workers.dev)**: paste its store link to see who makes it, how many people use it, and whether it's maintained. See also the [report on the 150 most popular Chrome extensions](https://app.extensionguardian.workers.dev/report/popular-chrome-extensions-2026) and, for extension developers, [what to do when someone offers to buy your extension](https://app.extensionguardian.workers.dev/developers/offer-to-buy-your-extension).
 
 ![Extension Guardian popup](store/screenshot-1.png)
 

@@ -160,14 +160,15 @@ test('an unexpected failure becomes a plain 500 with security headers', async ()
 
 // --- robots.txt and sitemap (40)
 
-test('the sitemap lists every public page once, and robots.txt points to it', async () => {
-  const xml = renderSitemap(POPULAR);
+test('the sitemap lists the main pages once, and robots.txt points to it', async () => {
+  const xml = renderSitemap();
   const locs = [...xml.matchAll(/<loc>https:\/\/app\.extensionguardian\.workers\.dev([^<]*)<\/loc>/g)].map((m) => m[1]);
-  for (const path of ['/', '/popular', '/how-it-works', '/incidents', '/privacy', '/report/popular-chrome-extensions-2026']) {
+  for (const path of ['/', '/popular', '/how-it-works', '/developers/offer-to-buy-your-extension', '/incidents', '/privacy', '/report/popular-chrome-extensions-2026']) {
     assert.ok(locs.includes(path), path);
   }
   for (const i of INCIDENTS) assert.ok(locs.includes(`/incidents/${i.slug}`), i.slug);
   for (const e of REPORT.stale) assert.ok(locs.includes(extensionPath(e.id, e.name)), e.name);
+  assert.ok(locs.length < 40, `${locs.length} URLs: keep the sitemap to the main pages`);
   assert.equal(new Set(locs).size, locs.length);
   for (const path of locs) assert.equal((await get(path)).status, 200, path);
   const robots = await body('/robots.txt');

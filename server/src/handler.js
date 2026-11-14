@@ -162,7 +162,7 @@ async function checkerPage(url, { fetchImpl, cache, limited }) {
   const incident = findIncident(/^\/incidents\/([a-z0-9-]+)\/?$/.exec(url.pathname)?.[1]);
   if (incident) return html(renderIncidentPage(incident));
   if (url.pathname === '/sitemap.xml') {
-    return text(renderSitemap(POPULAR), 'application/xml; charset=utf-8');
+    return text(renderSitemap(), 'application/xml; charset=utf-8');
   }
   if (url.pathname === '/robots.txt') return text(ROBOTS, 'text/plain; charset=utf-8');
   // Google Search Console ownership check. Keep it, or the site loses verification.

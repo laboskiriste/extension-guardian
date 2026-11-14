@@ -827,8 +827,13 @@ ${CTA}`,
   });
 }
 
-export function renderSitemap(popular) {
-  const extensions = [...popular, ...REPORT.stale].map((e) => extensionPath(e.id, e.name));
+// Only the pages with something of their own to say. The ~140 popular
+// extension pages stay reachable from /popular but are left out: on a new
+// site, a sitemap full of near-identical pages kept Google from crawling any
+// of them (Search Console, Nov 2026: 0 of 153 indexed). The stale extensions
+// from the report stay, since the report links to them.
+export function renderSitemap() {
+  const extensions = REPORT.stale.map((e) => extensionPath(e.id, e.name));
   const urls = [...new Set(['/', '/popular', REPORT_PATH, HOW_PATH, SELL_PATH, INCIDENTS_PATH, ...INCIDENTS.map(incidentPath), '/privacy', ...extensions])];
   return `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
