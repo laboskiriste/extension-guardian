@@ -1,7 +1,7 @@
 // The public "Is this extension safe?" page, served at /. It checks one
-// extension using only its Chrome Web Store listing, the same data the
-// extension uses, and points visitors to the extension for what a web page
-// can't see: permissions and changes over time.
+// extension using its Chrome Web Store listing and the permissions in its
+// store package, and points visitors to the extension for what a web page
+// can't see: which extensions they have installed and changes over time.
 import { INCIDENTS, findIncident, incidentFor, incidentPath, reportedName } from './incidents.js';
 import { REPORT } from './report-data.js';
 import { replacementFor } from './replacements.js';
@@ -140,7 +140,38 @@ function goneVerdict(id) {
   return { label: 'No longer in the Chrome Web Store', text: 'There is no listing to check. Google often removes malware this way, so if you have it installed, consider removing it.' };
 }
 
-function resultHtml(id, info) {
+const ACCESS = {
+  full: { cls: 'bad', label: 'Full access', text: 'It can reach everything on the sites you visit, or has one very powerful permission.' },
+  limited: { cls: 'mixed', label: 'Limited access', text: 'It can reach some sites or use a few sensitive features.' },
+  basic: { cls: 'good', label: 'Basic access', text: 'It can\'t read the pages you visit or do anything sensitive.' },
+};
+const ACCESS_MISSING = {
+  large: 'The package is too large to read here.',
+  not_found: 'The store has no package to read for this extension.',
+};
+
+// What the extension is able to do, from the permissions in its manifest.
+// Says nothing about whether it is trustworthy: a password manager needs full access to work.
+function accessHtml(access) {
+  if (!access) return '';
+  if (access.status !== 'ok') {
+    return `<section class="card"><h2>What it can do</h2>
+    <p class="text muted">${ACCESS_MISSING[access.code] ?? 'We couldn\'t read its permissions just now.'}</p></section>`;
+  }
+  const a = ACCESS[access.level];
+  const list = access.reasons.map((r) => `
+    <li class="${r.weight >= 20 ? 'bad' : 'mixed'}"><span class="mark" aria-hidden="true">!</span>
+      <div><strong>${escapeHtml(r.title)}</strong><span class="muted">${escapeHtml(r.detail)}</span></div></li>`).join('');
+  return `<section class="card access ${a.cls}">
+    <h2>What it can do</h2>
+    <div class="verdict"><span class="verdict-icon" aria-hidden="true">${access.level === 'basic' ? '✓' : '!'}</span>
+      <div><strong>${a.label}</strong><span>${a.text}</span></div></div>
+    ${list ? `<ul class="signals">${list}</ul>` : ''}
+    <p class="muted note">Read from the permissions in the extension's manifest in the store. This says what it is able to do, not whether it does. A password manager, for example, needs full access to work.</p>
+  </section>`;
+}
+
+function resultHtml(id, info, access = null) {
   if (info.status === 'error') {
     return `<section class="card"><p class="text">The Chrome Web Store didn't answer just now. Please try again in a minute.</p></section>`;
   }
@@ -165,7 +196,7 @@ function resultHtml(id, info) {
     <div class="verdict"><span class="verdict-icon" aria-hidden="true">${ICONS[verdict]}</span>
       <div><strong>${v.label}</strong><span>${v.text}</span></div></div>
     ${list ? `<ul class="signals">${list}</ul>` : ''}
-  </section>${replacementHtml(id)}
+  </section>${gone ? '' : accessHtml(access)}${replacementHtml(id)}
   ${info.status === 'ok' ? `<section class="card">
     <h2>Who makes it</h2><dl>${developerRows(info)}</dl>
     <p class="store-link"><a href="${storeUrl}" rel="noopener">View in the Chrome Web Store ↗</a></p>
@@ -265,6 +296,7 @@ const STYLE = `
   .mark { flex: none; width: 24px; height: 24px; border-radius: 50%; display: grid; place-items: center; font-weight: 800; font-size: 13px; margin-top: 2px; }
   li.good .mark { background: var(--accent-soft); color: var(--accent); }
   li.bad .mark { background: var(--bad-soft); color: var(--bad); }
+  li.mixed .mark { background: var(--mixed-soft); color: var(--mixed); }
   dl { display: grid; grid-template-columns: max-content 1fr; gap: 8px 20px; margin: 0; }
   dt { color: var(--muted); } dd { margin: 0; overflow-wrap: anywhere; font-weight: 500; }
   .store-link { margin: 16px 0 0; }
@@ -492,7 +524,7 @@ const homeData = () => ({
   offers: { '@type': 'Offer', price: '0', priceCurrency: 'USD' },
 });
 
-export function renderCheckPage({ query = '', id = null, info = null, popular = [] } = {}) {
+export function renderCheckPage({ query = '', id = null, info = null, access = null, popular = [] } = {}) {
   const shownName = info?.title ?? (id && knownName(id));
   const name = shownName ? escapeHtml(shownName) : null;
   const invalid = query && !id;
@@ -507,7 +539,7 @@ ${form(query, { autofocus: !query })}
 ${invalid ? INVALID : '<p class="hint">Works with any link from chromewebstore.google.com.</p>'}
 </div>${DEMO}</div>`;
   const body = id && info
-    ? `${resultHtml(id, info)}
+    ? `${resultHtml(id, info, access)}
 <h2 class="section-title">Check another extension</h2>
 <div class="card">${form('')}</div>`
     : popular.length
@@ -650,9 +682,9 @@ export function renderIncidentsPage(incidents) {
 // Keep in step with the privacy policy and the extension's README.
 const FAQ = [
   ['What does the web checker look at?',
-    'Only the extension\'s public Chrome Web Store listing: who the developer is, whether they registered as a business, how many people use it, when it was last updated and how to contact the developer. It reads the same page you would.'],
+    'The extension\'s public Chrome Web Store listing: who the developer is, whether they registered as a business, how many people use it, when it was last updated and how to contact the developer. It also reads the permissions listed in the extension\'s manifest, so you can see what it is able to do.'],
   ['Is this a malware scan?',
-    'No. The checker doesn\'t download or run the extension and can\'t see its code or permissions. It shows the signals in the listing that tend to come before trouble, such as an abandoned extension or a developer with no contact details.'],
+    'No. The checker never runs the extension and doesn\'t read its code. It reads the permissions in its manifest and the signals in the listing that tend to come before trouble, such as an abandoned extension or a developer with no contact details. Permissions show what an extension is able to do, not what it does.'],
   ['What does the extension add?',
     'Extension Guardian watches the extensions you have installed and warns you when one changes owner, asks for new permissions, disappears from the store or was installed by another program. It can also keep chosen extensions off sites such as your bank.'],
   ['Why do sold extensions matter?',

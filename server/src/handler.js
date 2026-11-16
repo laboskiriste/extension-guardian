@@ -3,6 +3,7 @@
 // Only public store data passes through here: the request carries extension
 // IDs and nothing about the user.
 import { parseStorePage } from '../../extension/src/lib/store.js';
+import { lookupAccess } from './access.js';
 import { PRIVACY_HTML } from './privacy.js';
 import {
   extractId, extensionPath, renderCheckPage, renderHowPage, renderSellPage, renderIncidentPage, renderIncidentsPage, renderNotFoundPage, renderPopularPage, renderReportPage, renderSitemap,
@@ -142,7 +143,10 @@ async function checkerPage(url, { fetchImpl, cache, limited }) {
   const match = /^\/extension\/(?:[a-z0-9-]+\/)?([a-p]{32})\/?$/.exec(url.pathname);
   if (match) {
     const info = await safeLookup(match[1]);
-    const page = renderCheckPage({ id: match[1], info });
+    // The permissions come from the extension's package. Only for listed
+    // extensions, and only while this address isn't over its request limit.
+    const access = info.status === 'ok' && !(await limited()) ? await lookupAccess(match[1], { fetchImpl, cache }) : null;
+    const page = renderCheckPage({ id: match[1], info, access });
     return info.status === 'error' ? html(page, UNAVAILABLE.status, UNAVAILABLE.cacheControl) : html(page, 200, SHORT);
   }
   if (url.pathname === '/popular') return html(renderPopularPage(POPULAR));

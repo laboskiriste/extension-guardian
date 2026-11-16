@@ -28,7 +28,7 @@ export const PRIVACY_HTML = `<!doctype html>
 </head>
 <body>
 <h1>Extension Guardian – Privacy Policy</h1>
-<p class="muted">Effective November 2, 2026</p>
+<p class="muted">Effective November 16, 2026</p>
 
 <p>Extension Guardian checks the other extensions installed in your browser and warns you when one looks risky.
 It is built to need as little of your data as possible. This page explains exactly what it uses.</p>
@@ -58,7 +58,9 @@ listing of each add-on you have installed, by its ID. Mozilla's own privacy poli
 
 <h2>The website checker</h2>
 <p>The page at <a href="/">guardian.tinyward.org</a> checks one extension at a time. It receives only the store link or ID you
-paste in, looks up the same public store information, and keeps it for up to 6 hours in the same way. It uses no cookies and no analytics.</p>
+paste in, looks up the same public store information, and keeps it for up to 6 hours in the same way. To show what the extension is able to do, it
+also downloads the extension's public package from Google's store and reads the permissions in its manifest. Only the permission summary is kept,
+for up to 24 hours. It uses no cookies and no analytics.</p>
 
 <h2>What we never do</h2>
 <ul>
