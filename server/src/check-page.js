@@ -167,7 +167,7 @@ function accessHtml(access) {
     <div class="verdict"><span class="verdict-icon" aria-hidden="true">${access.level === 'basic' ? '✓' : '!'}</span>
       <div><strong>${a.label}</strong><span>${a.text}</span></div></div>
     ${list ? `<ul class="signals">${list}</ul>` : ''}
-    <p class="muted note">Read from the permissions in the extension's manifest in the store. This says what it is able to do, not whether it does. A password manager, for example, needs full access to work.</p>
+    <p class="muted note">Read from the permissions in the extension's manifest in the store. This says what it is able to do, not whether it does. A password manager, for example, needs full access to work. <a href="${PERMISSIONS_PATH}">What the permission warnings mean</a></p>
   </section>`;
 }
 
@@ -214,6 +214,7 @@ export const MANIFEST_PATH = '/manifest.webmanifest';
 export const HOW_PATH = '/how-it-works';
 export const INCIDENTS_PATH = '/incidents';
 export const SELL_PATH = '/developers/offer-to-buy-your-extension';
+export const PERMISSIONS_PATH = '/guides/read-and-change-all-your-data-on-all-websites';
 
 export const slugify = (name) => (String(name).split(/\s[-–—:|]\s|:\s/)[0].toLowerCase()
   .replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 50).replace(/-+$/, '')) || 'extension';
@@ -762,6 +763,53 @@ export function renderSellPage() {
   });
 }
 
+// What Chrome's install warnings mean, for people who just clicked "Add".
+const PERMISSIONS_SECTIONS = [
+  ['The warning, in plain words', [
+    '"Read and change all your data on all websites" means the extension can run on every page you open. It can see what is on the page, including what you type, and it can change the page.',
+    'That is not the same as it doing so. A tool that darkens every website or blocks ads has to be on every website to work. The warning says what an extension is able to do, not what it does.',
+    'It is also not limited to the page you are looking at. The access lasts as long as the extension is installed, and it covers pages you open later, such as your bank or your email.',
+  ]],
+  ['Why it matters more than it sounds', [
+    'Chrome updates extensions on its own, without asking. If the extension already has access to every site, an update can start using it the same day, and you will not be asked again.',
+    'This is what buyers look for when they offer to buy an extension. The access comes with it, and so do the users. See the incidents page for cases where this happened.',
+    'Extensions that can read every site are common. In the popular extensions report, 94 of 150 could, so a long list of such extensions is normal and not a sign that yours is bad.',
+  ]],
+  ['Other warnings worth reading', [
+    '"Read your browsing history": it can see which sites you have visited. Chrome shows this for the history and tabs permissions.',
+    '"Manage your apps, extensions, and themes": it can turn your other extensions off, including security tools.',
+    '"Communicate with cooperating native applications": it can exchange data with programs installed on your computer, outside the browser.',
+    'Some permissions that matter do not add a warning of their own. Combined with access to every site, cookies, webRequest and scripting let an extension see your sign-ins, watch your network requests and run its own code on pages. The checker lists these as well.',
+  ]],
+  ['What you can do', [
+    'Before installing, ask whether it needs to be on every site. A tool for one site should ask for that site only.',
+    'Prefer extensions that open their code, and whose developer you can identify. Our checker shows who publishes an extension and whether they are registered as a business.',
+    'Remove extensions you no longer use. Each one that stays installed is access you are still giving.',
+    'In Chrome you can limit a single extension to "On click" or to specific sites. Open the extensions menu, choose Manage extensions, then Details, and look at "Site access".',
+  ]],
+];
+
+export function renderPermissionsPage() {
+  const sections = PERMISSIONS_SECTIONS.map(([title, items]) => `
+  <section class="card">
+    <h2>${escapeHtml(title)}</h2>
+    <ul class="steps">${items.map((item) => `<li>${escapeHtml(item)}</li>`).join('')}</ul>
+  </section>`).join('');
+  return layout({
+    title: 'What “Read and change all your data on all websites” means · Extension Guardian',
+    description: 'What Chrome\'s extension permission warnings mean, why access to every website matters, and how to check what an extension can do before you install it.',
+    canonical: PERMISSIONS_PATH,
+    hero: `<h1>"Read and change all your data on all websites"</h1>
+<p class="lead">Chrome shows this when you add many extensions, and most people click Add. Here is what it means, and when to worry.</p>`,
+    body: `${sections}
+  <section class="card">
+    <h2>Check any extension</h2>
+    <p class="text">Paste a Chrome Web Store link into the <a href="/">checker</a>. It shows who publishes the extension and what it is able to do, from the permissions in its package, as full, limited or basic access, with the reasons. It does not say whether an extension is trustworthy, only what it could do.</p>
+    <p class="note">The <a href="${REPORT_PATH}">popular extensions report</a> shows how many widely used extensions can read every page.</p>
+  </section>${CTA}`,
+  });
+}
+
 // A shield on the brand green, for the browser tab and home screen.
 export const FAVICON_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><rect width="24" height="24" rx="5" fill="#1f7a4d"/><path fill="#fff" d="M12 3.5 5.5 6v5c0 4.2 2.8 7.8 6.5 9.1 3.7-1.3 6.5-4.9 6.5-9.1V6L12 3.5Z"/><path fill="none" stroke="#1f7a4d" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" d="m8.8 11.9 2.2 2.2 4.2-4.4"/></svg>`;
 
@@ -869,7 +917,7 @@ ${CTA}`,
 // from the report stay, since the report links to them.
 export function renderSitemap() {
   const extensions = REPORT.stale.map((e) => extensionPath(e.id, e.name));
-  const urls = [...new Set(['/', '/popular', REPORT_PATH, HOW_PATH, SELL_PATH, INCIDENTS_PATH, ...INCIDENTS.map(incidentPath), '/privacy', ...extensions])];
+  const urls = [...new Set(['/', '/popular', REPORT_PATH, HOW_PATH, SELL_PATH, PERMISSIONS_PATH, INCIDENTS_PATH, ...INCIDENTS.map(incidentPath), '/privacy', ...extensions])];
   return `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
 ${urls.map((u) => `  <url><loc>${SITE}${u}</loc></url>`).join('\n')}

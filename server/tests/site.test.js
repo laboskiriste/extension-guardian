@@ -123,7 +123,7 @@ test('Cache-Control fits each kind of response', async () => {
   const cc = async (path, options) => (await get(path, options)).headers.get('Cache-Control');
   assert.equal(await cc(`/v1/store?ids=${DARK}`), 'no-store');
   assert.equal(await cc('/v1/store?ids=bad'), 'no-store');
-  for (const path of ['/', '/popular', '/privacy', '/how-it-works', '/developers/offer-to-buy-your-extension', '/incidents', '/robots.txt', '/sitemap.xml', '/report/popular-chrome-extensions-2026', '/report/popular-chrome-extensions-2026.json']) {
+  for (const path of ['/', '/popular', '/privacy', '/how-it-works', '/developers/offer-to-buy-your-extension', '/guides/read-and-change-all-your-data-on-all-websites', '/incidents', '/robots.txt', '/sitemap.xml', '/report/popular-chrome-extensions-2026', '/report/popular-chrome-extensions-2026.json']) {
     assert.match(await cc(path), /^public, max-age=\d+$/, path);
   }
   assert.equal(await cc(`/extension/dark-reader/${DARK}`), 'public, max-age=600');
@@ -163,7 +163,7 @@ test('an unexpected failure becomes a plain 500 with security headers', async ()
 test('the sitemap lists the main pages once, and robots.txt points to it', async () => {
   const xml = renderSitemap();
   const locs = [...xml.matchAll(/<loc>https:\/\/guardian\.tinyward\.org([^<]*)<\/loc>/g)].map((m) => m[1]);
-  for (const path of ['/', '/popular', '/how-it-works', '/developers/offer-to-buy-your-extension', '/incidents', '/privacy', '/report/popular-chrome-extensions-2026']) {
+  for (const path of ['/', '/popular', '/how-it-works', '/developers/offer-to-buy-your-extension', '/guides/read-and-change-all-your-data-on-all-websites', '/incidents', '/privacy', '/report/popular-chrome-extensions-2026']) {
     assert.ok(locs.includes(path), path);
   }
   for (const i of INCIDENTS) assert.ok(locs.includes(`/incidents/${i.slug}`), i.slug);
@@ -374,4 +374,12 @@ test('tinyward.org serves the family home page', async () => {
   const png = await at('https://tinyward.org/icons/unseen.png');
   assert.equal(png.headers.get('Content-Type'), 'image/png');
   assert.match(htmlText, /src="\/icons\/extension-guardian\.png"/);
+});
+
+test('the permissions guide quotes the report figure it relies on', async () => {
+  const page = await (await get('/guides/read-and-change-all-your-data-on-all-websites')).text();
+  assert.match(page, /Read and change all your data on all websites/);
+  assert.ok(page.includes(`${REPORT.broad} of ${REPORT.listed}`), 'the 94 of 150 figure must match the report');
+  assert.match(page, /<meta property="og:title" content="[^"]*">/, 'quotes in the title must not break the meta tag');
+  assert.match(page, /rel="canonical" href="https:\/\/guardian\.tinyward\.org\/guides\//);
 });

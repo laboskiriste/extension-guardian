@@ -86,7 +86,7 @@ test('popular page, sitemap and robots.txt', async () => {
   const { INCIDENTS } = await import('../src/incidents.js');
   const locs = (await sitemap.text()).match(/<loc>[^<]+<\/loc>/g);
   assert.equal(new Set(locs).size, locs.length);
-  assert.equal(locs.length, new Set(REPORT.stale.map((e) => e.id)).size + INCIDENTS.length + 7);
+  assert.equal(locs.length, new Set(REPORT.stale.map((e) => e.id)).size + INCIDENTS.length + 8);
   assert.match(await (await get('/robots.txt')).text(), /Sitemap: .+\/sitemap\.xml/);
 });
 
