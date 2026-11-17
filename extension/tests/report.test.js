@@ -18,11 +18,11 @@ test('the list as text', () => {
     'Extension Guardian: 2 extensions, 1 turned on (2026-11-01)',
     '',
     'Gone Tool 1.0',
-    `  High risk · Basic access · ID ${'a'.repeat(32)}`,
+    `  Attention required · Basic access · ID ${'a'.repeat(32)}`,
     '  Warnings: No longer in the Chrome Web Store',
     '',
     'Notes 2.1 (turned off)',
-    `  Low risk · Basic access · ID ${'b'.repeat(32)}`,
+    `  No warning signs · Basic access · ID ${'b'.repeat(32)}`,
     '  Developer: Ana',
     '',
   ].join('\n'));

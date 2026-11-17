@@ -5,6 +5,7 @@
 import { INCIDENTS, findIncident, incidentFor, incidentPath, reportedName } from './incidents.js';
 import { REPORT } from './report-data.js';
 import { replacementFor } from './replacements.js';
+import { recommend } from '../../extension/src/lib/risk.js';
 
 const STORE_LINK = 'https://chromewebstore.google.com/detail/extension-guardian/mpceklcidiadoneogfmpkjpadihmlcjd';
 const GITHUB_LINK = 'https://github.com/laboskiriste/extension-guardian';
@@ -30,56 +31,47 @@ function parseUsers(text) {
   return text && Number.isFinite(n) ? n : null;
 }
 
-// Signals from the store listing alone, worded for someone deciding whether
-// to install. Mirrors the store part of the extension's risk model.
-export function storeSignals(info, now = Date.now()) {
+// What the web checker tells someone deciding whether to install. It has no
+// history, so it never says that nothing has changed: it says what the
+// extension can access and what could not be checked. It never certifies
+// safety, and popularity, update date and trader status are not judged.
+export function webVerdict(info, access) {
   if (info.status === 'not_found') {
+    return { cls: 'bad', icon: '!', label: 'No longer in the store', text: 'There is no live listing for this extension. The reason may be unknown.', action: null };
+  }
+  if (access?.status !== 'ok') {
     return {
-      verdict: 'bad',
-      signals: [{
-        kind: 'bad',
-        title: 'Not in the Chrome Web Store',
-        detail: 'There is no live store listing for this ID. Google often removes malware this way. If you have it installed, consider removing it.',
-      }],
+      cls: 'neutral', icon: '?', label: 'Insufficient information',
+      text: 'We couldn\'t read this extension\'s permissions just now, so we can\'t say what it can access.',
+      action: 'Try again in a minute, or look at the permissions listed on its store page before you install it.',
     };
   }
-  const signals = [];
-  const users = parseUsers(info.users);
-  if (users != null && users < 1000) {
-    signals.push({ kind: 'bad', title: `Only ${users.toLocaleString('en-US')} users`, detail: 'Few people use it, so problems are less likely to be noticed and reported.' });
-  } else if (users != null && users >= 100000) {
-    signals.push({ kind: 'good', title: `Used by ${info.users} people`, detail: 'A large user base means problems tend to get noticed quickly.' });
+  if (recommend(access.level, 'low') === 'review') {
+    return {
+      cls: 'mixed', icon: '!', label: 'Review recommended',
+      text: 'This extension can read or change information on websites you visit.',
+      action: 'Install it only if you need it and understand why it needs this access.',
+    };
   }
-  const updated = Date.parse(info.updated ?? '');
-  if (Number.isFinite(updated)) {
-    const days = (now - updated) / DAY;
-    if (days > 730) signals.push({ kind: 'bad', title: 'Not updated in over 2 years', detail: `Last updated ${info.updated}. Abandoned extensions are the ones most often sold.` });
-    else if (days > 365) signals.push({ kind: 'bad', title: 'Not updated in over a year', detail: `Last updated ${info.updated}.` });
-    else if (days < 180) signals.push({ kind: 'good', title: 'Actively maintained', detail: `Last updated ${info.updated}.` });
-  }
-  if (info.trader === 'trader') {
-    signals.push({ kind: 'good', title: 'Registered business', detail: 'The developer has identified itself as a trader under EU law, with a public address.' });
-  }
-  if (!info.email && !info.website) {
-    signals.push({ kind: 'bad', title: 'No developer contact', detail: 'The store lists no email or website for the developer.' });
-  }
-  const bad = signals.filter((s) => s.kind === 'bad').length;
-  const good = signals.length - bad;
-  const verdict = bad === 0 && good > 0 ? 'good' : bad > good ? 'bad' : 'mixed';
-  return { verdict, signals };
+  return access.level === 'limited'
+    ? {
+      cls: 'neutral', icon: 'i', label: 'Limited access',
+      text: 'It can reach some sites or use a few sensitive features. No warning signs detected in what we can check.',
+      action: 'Check that this access fits what the extension does.',
+    }
+    : {
+      cls: 'neutral', icon: 'i', label: 'Basic access',
+      text: 'It uses no sensitive permissions. No warning signs detected in what we can check.',
+      action: 'With modest permissions, the main question is whether you need it.',
+    };
 }
-
-const VERDICTS = {
-  good: { label: 'Good signs', text: 'Nothing in the store listing stands out.' },
-  mixed: { label: 'Mixed signs', text: 'Some things in the store listing are worth a closer look.' },
-  bad: { label: 'Warning signs', text: 'The store listing shows real reasons for caution.' },
-};
 
 function developerRows(info) {
   const rows = [
     ['Offered by', info.offeredBy],
     ['Developer', info.developerName],
     ['Address', info.developerAddress],
+    ['Status', info.trader === 'trader' ? 'Registered business (EU trader)' : info.trader === 'non-trader' ? 'Individual (not an EU trader)' : null],
     ['Email', info.email],
     ['Website', info.website],
     ['Users', info.users],
@@ -91,7 +83,6 @@ function developerRows(info) {
 
 const SHIELD = `<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 2 4 5v6c0 5 3.4 9.4 8 11 4.6-1.6 8-6 8-11V5l-8-3Z"/><path fill="none" stroke="var(--shield-check)" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" d="m8.2 12.2 2.6 2.6 5-5.2"/></svg>`;
 
-const ICONS = { good: '✓', mixed: '!', bad: '!' };
 
 const CTA = `
   <section class="card cta">
@@ -143,7 +134,7 @@ function goneVerdict(id) {
 const ACCESS = {
   full: { cls: 'bad', label: 'Full access', text: 'It can reach everything on the sites you visit, or has one very powerful permission.' },
   limited: { cls: 'mixed', label: 'Limited access', text: 'It can reach some sites or use a few sensitive features.' },
-  basic: { cls: 'good', label: 'Basic access', text: 'It can\'t read the pages you visit or do anything sensitive.' },
+  basic: { cls: 'neutral', label: 'Basic access', text: 'It can\'t read the pages you visit or do anything sensitive.' },
 };
 const ACCESS_MISSING = {
   large: 'The package is too large to read here.',
@@ -164,7 +155,7 @@ function accessHtml(access) {
       <div><strong>${escapeHtml(r.title)}</strong><span class="muted">${escapeHtml(r.detail)}</span></div></li>`).join('');
   return `<section class="card access ${a.cls}">
     <h2>What it can do</h2>
-    <div class="verdict"><span class="verdict-icon" aria-hidden="true">${access.level === 'basic' ? '✓' : '!'}</span>
+    <div class="verdict"><span class="verdict-icon" aria-hidden="true">${access.level === 'basic' ? 'i' : '!'}</span>
       <div><strong>${a.label}</strong><span>${a.text}</span></div></div>
     ${list ? `<ul class="signals">${list}</ul>` : ''}
     <p class="muted note">Read from the permissions in the extension's manifest in the store. This says what it is able to do, not whether it does. A password manager, for example, needs full access to work. <a href="${PERMISSIONS_PATH}">What the permission warnings mean</a></p>
@@ -176,11 +167,7 @@ function resultHtml(id, info, access = null) {
     return `<section class="card"><p class="text">The Chrome Web Store didn't answer just now. Please try again in a minute.</p></section>`;
   }
   const gone = info.status === 'not_found';
-  const { verdict, signals } = storeSignals(info);
-  const v = gone ? goneVerdict(id) : VERDICTS[verdict];
-  const list = gone ? '' : signals.map((s) => `
-    <li class="${s.kind}"><span class="mark" aria-hidden="true">${s.kind === 'good' ? '✓' : '!'}</span>
-      <div><strong>${escapeHtml(s.title)}</strong><span class="muted">${escapeHtml(s.detail)}</span></div></li>`).join('');
+  const v = gone ? { ...webVerdict(info, access), ...goneVerdict(id) } : webVerdict(info, access);
   const storeUrl = `https://chromewebstore.google.com/detail/${id}`;
   const name = info.title ?? knownName(id) ?? 'Unknown extension';
   const icon = info.icon?.startsWith('https://lh3.googleusercontent.com/')
@@ -189,18 +176,23 @@ function resultHtml(id, info, access = null) {
   const maker = info.developerName ?? info.offeredBy;
   const facts = [maker && `by ${escapeHtml(maker)}`, info.users && `${escapeHtml(info.users)} users`].filter(Boolean).join(' · ');
   return `${incidentHtml(id)}
-  <section class="card verdict-card ${verdict}">
+  <section class="card verdict-card ${v.cls}">
     <div class="ext-head">${icon}
       <div><h2>${escapeHtml(name)}</h2>
       <span class="muted">${facts || `ID ${id}`}</span></div></div>
-    <div class="verdict"><span class="verdict-icon" aria-hidden="true">${ICONS[verdict]}</span>
+    <div class="verdict"><span class="verdict-icon" aria-hidden="true">${v.icon}</span>
       <div><strong>${v.label}</strong><span>${v.text}</span></div></div>
-    ${list ? `<ul class="signals">${list}</ul>` : ''}
+    ${v.action ? `<p class="text"><strong>What should I do?</strong> ${escapeHtml(v.action)}</p>` : ''}
+    ${gone ? '' : `<p class="muted note">This checker has no history, so it can't tell whether this extension changed owner or asked for new permissions in the past. Extension Guardian watches the ones you have installed for that.</p>`}
   </section>${gone ? '' : accessHtml(access)}${replacementHtml(id)}
   ${info.status === 'ok' ? `<section class="card">
     <h2>Who makes it</h2><dl>${developerRows(info)}</dl>
     <p class="store-link"><a href="${storeUrl}" rel="noopener">View in the Chrome Web Store ↗</a></p>
-  </section>` : ''}${CTA}`;
+  </section>` : ''}
+  <section class="card">
+    <h2>Limits of this check</h2>
+    <p class="text">We check the permissions an extension declares and the public store listing, not its code. An extension can turn harmful without any visible change to its permissions or publisher, so "no warning signs" is never a guarantee of safety.</p>
+  </section>${CTA}`;
 }
 
 export const SITE = 'https://guardian.tinyward.org';
@@ -290,6 +282,7 @@ const STYLE = `
   .good .verdict { background: var(--accent-soft); } .good .verdict-icon { background: var(--accent); }
   .mixed .verdict { background: var(--mixed-soft); } .mixed .verdict-icon { background: var(--mixed); }
   .bad .verdict { background: var(--bad-soft); } .bad .verdict-icon { background: var(--bad); }
+  .neutral .verdict { background: var(--bg); border: 1px solid var(--line); } .neutral .verdict-icon { background: var(--muted); }
   .signals { list-style: none; padding: 0; margin: 16px 0 0; }
   .signals li { display: flex; gap: 12px; padding: 12px 0; border-top: 1px solid var(--line); }
   .signals li:first-child { border-top: 0; }
@@ -508,7 +501,7 @@ function checkDescription(id, info, name) {
     info?.updated && `last updated ${escapeHtml(info.updated)}`,
   ].filter(Boolean);
   const lead = facts.length ? `${name}: ${facts.join(', ')}. ` : '';
-  return `${lead}Who makes ${name ?? 'this extension'}, how many people use it, and whether it is still maintained, from its Chrome Web Store listing.`;
+  return `${lead}Who makes ${name ?? 'this extension'} and what it is able to do, from its Chrome Web Store listing and permissions.`;
 }
 
 const homeData = () => ({
@@ -531,11 +524,11 @@ export function renderCheckPage({ query = '', id = null, info = null, access = n
   const invalid = query && !id;
   const hero = name || id
     ? `<h1>Is ${name ?? 'this extension'} safe?</h1>
-<p class="lead">What the Chrome Web Store listing says about who makes it, how many people use it, and whether it's maintained.</p>`
+<p class="lead">Who makes it, and what it is able to do, from its Chrome Web Store listing and permissions.</p>`
     : `<div class="hero-grid"><div>
 <p class="eyebrow">Free checker · No sign-up</p>
 <h1>Is this Chrome extension safe?</h1>
-<p class="lead">See who makes an extension, how many people use it, and whether it's still maintained, before you install it.</p>
+<p class="lead">See who makes an extension and what it is able to do, before you install it.</p>
 ${form(query, { autofocus: !query })}
 ${invalid ? INVALID : '<p class="hint">Works with any link from chromewebstore.google.com.</p>'}
 </div>${DEMO}</div>`;
@@ -555,7 +548,7 @@ ${FEATURES}`
     title: name ? `Is ${name} safe? · Extension Guardian` : 'Is this Chrome extension safe? · Extension Guardian',
     description: id
       ? checkDescription(id, info, name)
-      : 'Paste a Chrome Web Store link to see who makes an extension, how many people use it, and whether it is maintained. Free, no sign-up.',
+      : 'Paste a Chrome Web Store link to see who makes an extension and what it is able to do. Free, no sign-up.',
     canonical: invalid ? null : canonical,
     hero,
     body,
@@ -683,9 +676,9 @@ export function renderIncidentsPage(incidents) {
 // Keep in step with the privacy policy and the extension's README.
 const FAQ = [
   ['What does the web checker look at?',
-    'The extension\'s public Chrome Web Store listing: who the developer is, whether they registered as a business, how many people use it, when it was last updated and how to contact the developer. It also reads the permissions listed in the extension\'s manifest, so you can see what it is able to do.'],
+    'The extension\'s public Chrome Web Store listing: who the developer is, whether they registered as a business, how many people use it, when it was last updated and how to contact the developer. These are shown as context, not judged. It also reads the permissions listed in the extension\'s manifest, so you can see what it is able to do, and that is what the recommendation is based on.'],
   ['Is this a malware scan?',
-    'No. The checker never runs the extension and doesn\'t read its code. It reads the permissions in its manifest and the signals in the listing that tend to come before trouble, such as an abandoned extension or a developer with no contact details. Permissions show what an extension is able to do, not what it does.'],
+    'No. The checker never runs the extension and doesn\'t read its code. It reads the permissions in its manifest and shows the public store listing. Permissions show what an extension is able to do, not what it does, and an extension can turn harmful without any visible change, so "no warning signs" is never a guarantee of safety.'],
   ['What does the extension add?',
     'Extension Guardian watches the extensions you have installed and warns you when one changes owner, asks for new permissions, disappears from the store or was installed by another program. It can also keep chosen extensions off sites such as your bank.'],
   ['Why do sold extensions matter?',
@@ -869,8 +862,8 @@ export function renderReportPage(r) {
 <section class="card">
   <h2>Full access is normal. That's the problem.</h2>
   <p class="text">Most of these extensions need broad access to do their job: an ad blocker, a password manager or a grammar
-  checker can't work without reading the pages you open. We rate all ${r.lowRisk} of them as low risk today. They're popular,
-  maintained and have a named developer.</p>
+  checker can't work without reading the pages you open. Full access on its own is not a warning sign, but it is not a sign
+  of safety either. Popular, maintained extensions with a named developer are exactly what a buyer or an attacker looks for.</p>
   <p class="note">The risk is what happens next. Extensions get sold, and the new owner inherits the users, the reviews and
   every one of those permissions. Chrome installs the next update silently and never says that someone else is now behind it.
   In <a href="${incidentPath(findIncident('superior-2026'))}">one campaign reported this year</a>, attackers bought established extensions and

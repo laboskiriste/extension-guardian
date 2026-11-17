@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { parseStorePage, fetchStoreInfoBatch, parseAmoAddon, fetchAmoInfoBatch } from '../src/lib/store.js';
-import { assessRisk, assessAccess, isFromStore, parseUsers } from '../src/lib/risk.js';
+import { assessRisk, assessAccess, isFromStore, parseUsers, recommend } from '../src/lib/risk.js';
 import { snapshotOf, diffSnapshots, diffStoreInfo } from '../src/lib/changes.js';
 
 const fixture = (name) => readFileSync(new URL(`./fixtures/${name}.html`, import.meta.url), 'utf8');
@@ -107,22 +107,37 @@ test('access levels come from permissions', () => {
   assert.equal(full.score, 60);
 });
 
-test('a popular, maintained extension with full access is low risk', () => {
+test('popularity, update date and trader status are context, not part of the score', () => {
   const r = assessRisk(ext(FULL), { store: store({ users: '20,000,000', trader: 'trader' }), now: NOW });
   assert.equal(r.level, 'low');
+  assert.equal(r.score, 0);
   assert.equal(r.access.level, 'full');
-  assert.deepEqual(r.reasons.map((x) => x.kind), ['good', 'good', 'good']);
+  assert.deepEqual(r.reasons.map((x) => x.kind), ['info', 'info', 'info']);
+  assert.ok(r.reasons.every((x) => x.weight === 0));
 });
 
-test('an unknown, abandoned extension with full access is high risk', () => {
-  const r = assessRisk(ext(FULL), { store: store({ users: '200', updated: 'March 3, 2023' }), now: NOW });
-  assert.equal(r.level, 'high');
-  assert.deepEqual(r.reasons.map((x) => x.title), ['Only 200 users', 'Not updated in over 2 years']);
+test('few users and an old update are never warnings, even with full access', () => {
+  for (const access of [FULL, {}]) {
+    const r = assessRisk(ext(access), { store: store({ users: '200', updated: 'March 3, 2023' }), now: NOW });
+    assert.equal(r.level, 'low');
+    assert.equal(r.score, 0);
+    assert.ok(!r.reasons.some((x) => x.kind === 'bad'));
+  }
 });
 
-test('the same unknown extension with basic access is only worth watching', () => {
-  const r = assessRisk(ext(), { store: store({ users: '200', updated: 'March 3, 2023' }), now: NOW });
-  assert.equal(r.level, 'watch');
+test('two extensions that differ only in popularity get the same rating', () => {
+  const small = assessRisk(ext(FULL), { store: store({ users: '963' }), now: NOW });
+  const big = assessRisk(ext(FULL), { store: store({ users: '2,000,000' }), now: NOW });
+  assert.equal(small.level, big.level);
+  assert.equal(small.score, big.score);
+});
+
+test('the recommended action never says "monitor" for full access', () => {
+  assert.equal(recommend('basic', 'low'), 'monitor');
+  assert.equal(recommend('limited', 'low'), 'monitor');
+  assert.equal(recommend('full', 'low'), 'review');
+  assert.equal(recommend('basic', 'watch'), 'review');
+  for (const access of ['basic', 'limited', 'full']) assert.equal(recommend(access, 'high'), 'act');
 });
 
 test('critical signals are high risk even for popular extensions', () => {
@@ -136,14 +151,14 @@ test('critical signals are high risk even for popular extensions', () => {
   assert.equal(isFromStore(sideloaded), false);
 });
 
-test('a store extension added by Chrome itself is not high risk', () => {
+test('a store extension added by Chrome itself is worth reviewing, not high risk', () => {
   // Google Docs Offline: installed by Chrome, updates from the store, no user count shown.
   const docs = ext({ installType: 'sideload', hostPermissions: ['https://docs.google.com/*'] });
   assert.equal(isFromStore(docs), true);
   assert.equal(assessRisk(docs).level, 'high', 'before the store has been checked');
   const google = store({ developerName: 'Google Ireland, Ltd.', trader: 'trader', users: null, updated: 'October 19, 2026' });
   const r = assessRisk(docs, { store: google, now: NOW });
-  assert.equal(r.level, 'low');
+  assert.equal(r.level, 'watch', 'you did not install it yourself, so it is worth a look');
   assert.equal(r.reasons[0].title, 'Installed by another program');
 });
 
@@ -270,9 +285,10 @@ test('names with HTML entities are decoded once', () => {
 
 test('risk edge cases: zero users, no update date, unlisted', () => {
   const zero = assessRisk(ext(), { store: store({ users: '0' }), now: NOW });
-  assert.equal(zero.reasons[0].title, 'Only 0 users');
-  assert.equal(zero.level, 'low', 'few users alone, with basic access, is low');
-  assert.equal(assessRisk(ext(FULL), { store: store({ users: '0' }), now: NOW }).level, 'watch');
+  assert.equal(zero.reasons[0].title, '0 users');
+  assert.equal(zero.reasons[0].kind, 'info');
+  assert.equal(zero.level, 'low', 'few users alone is never a warning');
+  assert.equal(assessRisk(ext(FULL), { store: store({ users: '0' }), now: NOW }).level, 'low');
 
   const noDate = assessRisk(ext(), { store: store({ updated: null }), now: NOW });
   assert.ok(!noDate.reasons.some((r) => /updated|maintained/i.test(r.title)));
@@ -286,7 +302,8 @@ test('risk edge cases: zero users, no update date, unlisted', () => {
 
 test('a store listing with no users and no contact', () => {
   const r = assessRisk(ext(), { store: store({ users: null, email: null, website: null, updated: null }), now: NOW });
-  assert.deepEqual(r.reasons.map((x) => x.title), ['No developer contact']);
+  assert.deepEqual(r.reasons.map((x) => [x.title, x.kind]), [['No developer contact', 'info']]);
+  assert.equal(r.level, 'low');
 });
 
 test('host permission changes', () => {

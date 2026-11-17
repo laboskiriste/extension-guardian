@@ -129,7 +129,7 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--accent); outlin
 .pill { font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 999px; white-space: nowrap; }
 .pill.high { background: var(--high-bg); color: var(--high); }
 .pill.watch { background: var(--medium-bg); color: var(--medium); }
-.pill.low { background: var(--low-bg); color: var(--low); }
+.pill.low { background: var(--surface); color: var(--muted); border: 1px solid var(--border); }
 
 .ext-body { padding: 0 12px 12px 50px; }
 .reasons { margin: 0; padding: 0; list-style: none; }
@@ -139,7 +139,7 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--accent); outlin
 .signals li { position: relative; padding-left: 20px; }
 .signals li::before { position: absolute; left: 0; top: 4px; font-weight: 700; }
 .signals li.bad::before { content: '!'; color: var(--high); left: 4px; }
-.signals li.good::before { content: '✓'; color: var(--low); }
+.signals li.info::before { content: '•'; color: var(--muted); left: 6px; }
 
 dl { display: grid; grid-template-columns: auto 1fr; gap: 2px 12px; margin: 0; }
 dt { color: var(--muted); }

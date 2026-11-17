@@ -119,12 +119,30 @@ test('check page escapes store text', async () => {
   assert.doesNotMatch(html, /"><script>/);
 });
 
-test('store signals', async () => {
-  const { storeSignals } = await import('../src/check-page.js');
-  const now = Date.parse('October 28, 2026');
-  assert.equal(storeSignals({ status: 'not_found' }, now).verdict, 'bad');
-  assert.equal(storeSignals({ status: 'ok', users: '7,000,000', updated: 'October 1, 2026', email: 'a@b.c' }, now).verdict, 'good');
-  assert.equal(storeSignals({ status: 'ok', users: '120', updated: 'January 1, 2023' }, now).verdict, 'bad');
+test('the web verdict follows what the extension can access, not how popular it is', async () => {
+  const { webVerdict } = await import('../src/check-page.js');
+  const ok = (level) => ({ status: 'ok', level, score: 0, reasons: [] });
+  const popular = { status: 'ok', users: '7,000,000', updated: 'October 1, 2026', email: 'a@b.c' };
+  const tiny = { status: 'ok', users: '120', updated: 'January 1, 2023' };
+  assert.equal(webVerdict({ status: 'not_found' }, null).cls, 'bad');
+  // Full access is a review, whether it has seven million users or 120.
+  assert.equal(webVerdict(popular, ok('full')).label, 'Review recommended');
+  assert.equal(webVerdict(tiny, ok('full')).label, 'Review recommended');
+  // Popularity and update date change nothing.
+  assert.deepEqual(webVerdict(popular, ok('basic')), webVerdict(tiny, ok('basic')));
+  assert.deepEqual(webVerdict(popular, ok('limited')), webVerdict(tiny, ok('limited')));
+  // Missing evidence is its own answer, never "no warning signs".
+  for (const access of [null, { status: 'unavailable', code: 'large' }]) {
+    const v = webVerdict(popular, access);
+    assert.equal(v.label, 'Insufficient information');
+    assert.doesNotMatch(v.text, /no warning signs/i);
+  }
+  // Nothing certifies safety.
+  for (const level of ['basic', 'limited', 'full']) {
+    const v = webVerdict(popular, ok(level));
+    assert.doesNotMatch(`${v.label} ${v.text} ${v.action}`, /\b(safe|good|trusted|secure)\b/i);
+    assert.notEqual(v.cls, 'good');
+  }
 });
 
 test('rejects bad requests', async () => {

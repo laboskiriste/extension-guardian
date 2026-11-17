@@ -1,7 +1,8 @@
 // The extension list as plain text, for the popup's "Copy the list". It is
 // built on the device and only goes to the clipboard.
 
-export const RISK_LABEL = { high: 'High risk', watch: 'Watch', low: 'Low risk' };
+// Labels say what was found, never that an extension is safe.
+export const RISK_LABEL = { high: 'Attention required', watch: 'Review recommended', low: 'No warning signs' };
 export const ACCESS_LABEL = { full: 'Full access', limited: 'Limited access', basic: 'Basic access' };
 
 // `rows` are { ext, store, risk } as the popup builds them.

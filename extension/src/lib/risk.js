@@ -69,6 +69,15 @@ export function parseUsers(text) {
   return text && Number.isFinite(n) ? n : null;
 }
 
+// What to do about an extension, from what it can access and what was seen:
+// "monitor", "review" or "act". Full access is never just "monitor", since no
+// warning sign is not a guarantee: the access is the same either way.
+export function recommend(accessLevel, riskLevel) {
+  if (riskLevel === 'high') return 'act';
+  if (riskLevel === 'watch') return 'review';
+  return accessLevel === 'full' ? 'review' : 'monitor';
+}
+
 export function riskLevelFor(score) {
   if (score >= 40) return 'high';
   if (score >= 15) return 'watch';
@@ -77,19 +86,20 @@ export function riskLevelFor(score) {
 
 /**
  * How likely the extension is to be harmful, from signals about who makes it
- * and how it got here. Reasons have kind "bad" or "good".
+ * and how it got here. Reasons have kind "bad" (a warning sign) or "info" (neutral context, no weight).
  *
  * Critical signals (new owner, removed from the store, installed by another
- * program, updates from outside the store) always make the risk high: a big
- * user count must never hide them. Store signals like user count and update
- * date only adjust the softer part of the score.
+ * program, updates from outside the store) always make the risk high.
+ * Popularity, update date, contact details and trader status are not part of
+ * the score at all: popular extensions are the ones worth buying or hijacking,
+ * and a small or finished one is not unsafe for being small or finished. They
+ * are listed as neutral context (kind "info").
  */
 export function assessRisk(ext, { store, ownershipChanged = false, recentAccessIncrease = false, now = Date.now() } = {}) {
   const access = assessAccess(ext);
   const full = access.level === 'full';
   const critical = [];
   const soft = [];
-  const good = [];
 
   if (ownershipChanged) {
     critical.push({
@@ -135,8 +145,8 @@ export function assessRisk(ext, { store, ownershipChanged = false, recentAccessI
     });
   }
 
-  // Not offset by good signals: a popular extension asking for more is exactly
-  // what a newly sold extension looks like.
+  // A popular extension asking for more is exactly what a newly sold extension
+  // looks like.
   const firm = [];
   if (recentAccessIncrease) {
     firm.push({
@@ -146,65 +156,42 @@ export function assessRisk(ext, { store, ownershipChanged = false, recentAccessI
     });
   }
 
+  const context = [];
   if (store?.status === 'ok') {
     const users = parseUsers(store.users);
     if (users != null) {
-      if (users < 1000) {
-        soft.push({
-          weight: full ? 20 : 5,
-          title: `Only ${users.toLocaleString('en-US')} users`,
-          detail: full
-            ? 'Few people use it, so problems are less likely to be noticed and reported, yet it can see every website.'
-            : 'Few people use it, so problems are less likely to be noticed and reported.',
-        });
-      } else if (users >= 100000) {
-        good.push({
-          weight: users >= 1000000 ? 15 : 10,
-          title: `Used by ${store.users} people`,
-          detail: 'Problems in popular extensions tend to be noticed and reported quickly.',
-        });
-      }
+      context.push({
+        title: `${store.users} users`,
+        detail: 'For context only. Popular extensions are not safer: they are the ones most worth buying or hijacking.',
+      });
     }
-
-    const updated = Date.parse(store.updated ?? '');
-    if (Number.isFinite(updated)) {
-      const days = (now - updated) / DAY;
-      if (days > 730) {
-        soft.push({
-          weight: full ? 20 : 10,
-          title: 'Not updated in over 2 years',
-          detail: 'Abandoned extensions miss security fixes and are often the ones that get sold.',
-        });
-      } else if (days > 365) {
-        soft.push({ weight: 5, title: 'Not updated in over a year', detail: `Last updated ${store.updated}.` });
-      } else if (days <= 180) {
-        good.push({ weight: 5, title: 'Actively maintained', detail: `Last updated ${store.updated}.` });
-      }
+    if (Number.isFinite(Date.parse(store.updated ?? ''))) {
+      context.push({
+        title: `Last updated ${store.updated}`,
+        detail: 'Maintenance information. A recent update is not a sign of safety, and an old one is not a sign of danger.',
+      });
     }
-
     if (store.trader === 'trader') {
-      good.push({
-        weight: 5,
+      context.push({
         title: 'Registered business',
-        detail: 'The developer has identified itself as a trader under EU law, with a public address.',
+        detail: 'The developer has identified itself as a trader under EU law, with a public address. This is not a security check.',
       });
     }
     if (!store.email && !store.website) {
-      soft.push({ weight: 5, title: 'No developer contact', detail: 'The store lists no email or website for the developer.' });
+      context.push({ title: 'No developer contact', detail: 'The store lists no email or website for the developer.' });
     }
   }
 
   const softScore = soft.reduce((sum, r) => sum + r.weight, 0);
-  const goodScore = good.reduce((sum, r) => sum + r.weight, 0);
   const firmScore = firm.reduce((sum, r) => sum + r.weight, 0);
-  const score = Math.min(100, critical.length * 40 + firmScore + Math.max(0, softScore - goodScore));
+  const score = Math.min(100, critical.length * 40 + firmScore + softScore);
   const level = critical.length ? 'high' : riskLevelFor(score);
 
   const reasons = [
     ...critical.map((r) => ({ ...r, weight: 40, kind: 'bad' })),
     ...firm.map((r) => ({ ...r, kind: 'bad' })),
     ...soft.sort((a, b) => b.weight - a.weight).map((r) => ({ ...r, kind: 'bad' })),
-    ...good.sort((a, b) => b.weight - a.weight).map((r) => ({ ...r, kind: 'good' })),
+    ...context.map((r) => ({ ...r, weight: 0, kind: 'info' })),
   ];
   return { score, level, reasons, access };
 }

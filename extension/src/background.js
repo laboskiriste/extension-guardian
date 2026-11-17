@@ -109,7 +109,7 @@ async function scanInstalled({ baseline = false } = {}) {
         fresh.push(makeAlert(ext, {
           type: 'installed',
           severity: 'high',
-          title: `New extension: ${ext.name} (high risk)`,
+          title: `New extension: ${ext.name} (needs attention)`,
           detail: risk.reasons.filter((r) => r.kind === 'bad').slice(0, 2).map((r) => r.title).join('; '),
         }));
       } else if (risk.access.level === 'full') {

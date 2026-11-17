@@ -133,8 +133,8 @@ function summary() {
   const watch = enabled.filter((x) => x.risk.level === 'watch').length;
   return h('section', { class: 'summary' },
     h('div', { class: 'stat' }, h('strong', {}, enabled.length), h('span', {}, 'active')),
-    h('div', { class: `stat ${high ? 'high' : ''}` }, h('strong', {}, high), h('span', {}, 'high risk')),
-    h('div', { class: `stat ${watch ? 'watch' : ''}` }, h('strong', {}, watch), h('span', {}, 'to watch')),
+    h('div', { class: `stat ${high ? 'high' : ''}` }, h('strong', {}, high), h('span', {}, 'need attention')),
+    h('div', { class: `stat ${watch ? 'watch' : ''}` }, h('strong', {}, watch), h('span', {}, 'to review')),
     h('div', { class: `stat ${data.alerts.length ? 'high' : ''}` }, h('strong', {}, data.alerts.length), h('span', {}, 'alerts')),
   );
 }
@@ -254,8 +254,8 @@ function riskReasons(ext, store, risk) {
     h('li', { class: r.kind }, h('strong', {}, r.title), h('span', {}, r.detail)));
   if (!items.length) {
     const note = isFromStore(ext) && !store
-      ? 'No warning signs yet. The developer has not been checked, press "Check now".'
-      : 'No warning signs found.';
+      ? 'No warning signs detected yet. The developer has not been checked, press "Check now".'
+      : 'No warning signs detected. That is not a guarantee of safety.';
     return h('p', { class: 'muted' }, note);
   }
   return h('ul', { class: 'reasons signals' }, items);
@@ -347,7 +347,7 @@ function extensionRow({ ext, store, risk }) {
     open && h('div', { class: 'ext-body', id: `body-${ext.id}` },
       store?.ownershipChanged && h('p', { class: 'warn' },
         `Developer changed from "${store.ownershipChanged.from}" to "${store.ownershipChanged.to}".`),
-      h('h3', {}, 'Why this risk level'),
+      h('h3', {}, 'Warning signs and context'),
       riskReasons(ext, store, risk),
       h('h3', {}, `What it can do · ${ACCESS_LABEL[risk.access.level]}`),
       risk.access.reasons.length
