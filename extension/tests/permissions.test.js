@@ -7,7 +7,7 @@ import { PERMISSIONS, HARMLESS, isBroadHost, hostLabel, describePermission } fro
 // Firefox's webRequestBlocking) must be either here or in PERMISSIONS, so a
 // new one is a decision and not an oversight.
 const BENIGN = [
-  'accessibilityFeatures.modify', 'accessibilityFeatures.read', 'activeTab', 'alarms', 'audio', 'background',
+  'accessibilityFeatures.modify', 'accessibilityFeatures.read', 'alarms', 'audio', 'background',
   'clipboardWrite', 'contextMenus', 'declarativeContent', 'declarativeNetRequest', 'dns',
   'downloads.ui', 'enterprise.hardwarePlatform',
   'favicon', 'fileBrowserHandler', 'fileSystemProvider', 'fontSettings', 'gcm', 'idle', 'loginState',
@@ -25,7 +25,7 @@ const ALL = [
   'nativeMessaging', 'pageCapture', 'platformKeys', 'privacy', 'proxy', 'readingList', 'scripting', 'sessions',
   'tabCapture', 'tabs', 'topSites', 'userScripts', 'vpnProvider', 'webAuthenticationProxy', 'webNavigation',
   'webRequest', 'webRequestAuthProvider', 'webRequestBlocking',
-  'documentScan', 'enterprise.deviceAttributes', 'enterprise.networkingAttributes', 'processes',
+  'activeTab', 'documentScan', 'enterprise.deviceAttributes', 'enterprise.networkingAttributes', 'processes',
   'system.cpu', 'system.display', 'system.memory', 'system.storage',
 ];
 

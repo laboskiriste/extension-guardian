@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { parseStorePage, fetchStoreInfoBatch, parseAmoAddon, fetchAmoInfoBatch } from '../src/lib/store.js';
-import { assessRisk, assessAccess, isFromStore, parseUsers, recommend } from '../src/lib/risk.js';
+import { assessRisk, assessAccess, hostReach, isFromStore, parseUsers, recommend } from '../src/lib/risk.js';
 import { snapshotOf, diffSnapshots, diffStoreInfo } from '../src/lib/changes.js';
 
 const fixture = (name) => readFileSync(new URL(`./fixtures/${name}.html`, import.meta.url), 'utf8');
@@ -107,6 +107,29 @@ test('access levels come from permissions', () => {
   assert.equal(full.score, 60);
 });
 
+test('site access is judged by how far it reaches, not by how many sites', () => {
+  const weather = Array.from({ length: 10 }, (_, i) => `https://weather${i}.example/*`);
+  const ten = assessAccess(ext({ hostPermissions: weather }));
+  const gmail = assessAccess(ext({ hostPermissions: ['https://mail.google.com/*'] }));
+  assert.equal(ten.score, gmail.score, 'ten sites score the same as one');
+  assert.equal(hostReach([]), 'none');
+  assert.equal(hostReach(weather), 'sites');
+  assert.equal(hostReach(['https://*.google.com/*']), 'domains');
+  assert.equal(hostReach(['https://*.google.com/*', '<all_urls>']), 'all');
+  assert.equal(hostReach(['*://*/*']), 'all');
+  const domain = assessAccess(ext({ hostPermissions: ['https://*.example.com/*'] }));
+  assert.ok(domain.score > gmail.score, 'a whole domain reaches further than one host');
+  assert.match(domain.reasons[0].title, /including their subdomains/);
+  assert.equal(domain.hostReach, 'domains');
+  assert.equal(assessAccess(ext(FULL)).hostReach, 'all');
+});
+
+test('activeTab is on-demand access: it shows, and does not change the level', () => {
+  const r = assessAccess(ext({ permissions: ['activeTab', 'storage'] }));
+  assert.equal(r.reasons[0].title, 'Can use the page you are on, when you click it');
+  assert.equal(r.level, 'basic');
+});
+
 test('system information permissions are listed, and unknown ones are shown as not rated', () => {
   const mem = assessAccess(ext({ permissions: ['system.memory', 'storage'] }));
   assert.equal(mem.reasons[0].title, 'Can see your computer\'s memory');
@@ -117,7 +140,7 @@ test('system information permissions are listed, and unknown ones are shown as n
   assert.equal(unknown.reasons.length, 1);
   assert.equal(unknown.reasons[0].title, 'Permissions we don\'t rate');
   assert.match(unknown.reasons[0].detail, /someFuturePermission, anotherOne/);
-  assert.equal(assessAccess(ext({ permissions: ['storage', 'alarms', 'activeTab'] })).reasons.length, 0, 'harmless ones add nothing');
+  assert.equal(assessAccess(ext({ permissions: ['storage', 'alarms', 'idle'] })).reasons.length, 0, 'harmless ones add nothing');
 });
 
 test('popularity, update date and trader status are context, not part of the score', () => {

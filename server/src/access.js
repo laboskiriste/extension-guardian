@@ -10,8 +10,11 @@ export const MAX_PACKAGE_BYTES = 30 * 1024 * 1024;
 const DOWNLOAD_TIMEOUT_MS = 12000;
 export const ACCESS_CACHE_SECONDS = 24 * 60 * 60;
 
+// prodversion is the browser version we claim to be. The store answers "204
+// no update" when an extension needs a newer browser than that (Bitwarden
+// does), so it is set far ahead of any real release.
 const crxUrl = (id) =>
-  `https://clients2.google.com/service/update2/crx?response=redirect&prodversion=130.0&acceptformat=crx3&x=id%3D${id}%26uc`;
+  `https://clients2.google.com/service/update2/crx?response=redirect&prodversion=200.0&acceptformat=crx3&x=id%3D${id}%26uc`;
 
 class Unreadable extends Error {
   constructor(code) {
@@ -89,15 +92,27 @@ export function accessInput(manifest) {
   return { permissions: listed.filter((p) => !isHostPattern(p)), hostPermissions: [...new Set(hosts)] };
 }
 
+// Permissions the extension may ask for after it is installed. They are not
+// granted yet, so they don't change the access level; they are shown apart.
+function optionalInput(manifest) {
+  const listed = (manifest.optional_permissions ?? []).filter((p) => typeof p === 'string');
+  const hosts = [...(manifest.optional_host_permissions ?? []), ...listed.filter(isHostPattern)].filter((p) => typeof p === 'string');
+  return { permissions: listed.filter((p) => !isHostPattern(p)), hostPermissions: [...new Set(hosts)] };
+}
+
 export function summarize(manifest) {
-  const { score, level, reasons } = assessAccess(accessInput(manifest));
-  return { status: 'ok', level, score, reasons, manifestVersion: manifest.manifest_version ?? null };
+  const { score, level, reasons, hostReach } = assessAccess(accessInput(manifest));
+  const later = assessAccess(optionalInput(manifest)).reasons;
+  return {
+    status: 'ok', level, score, reasons, hostReach, manifestVersion: manifest.manifest_version ?? null,
+    ...(later.length ? { canAskLater: later.map(({ title, detail }) => ({ title, detail })) } : {}),
+  };
 }
 
 // Downloads the package, stopping as soon as it grows past the size limit.
 async function download(url, fetchImpl) {
   const res = await fetchImpl(url, { signal: AbortSignal.timeout(DOWNLOAD_TIMEOUT_MS) });
-  if (!res.ok || !res.body) throw new Unreadable(res.status === 404 ? 'not_found' : 'download');
+  if (!res.ok || res.status === 204 || !res.body) throw new Unreadable(res.status === 404 ? 'not_found' : 'download');
   if (Number(res.headers.get('Content-Length')) > MAX_PACKAGE_BYTES) {
     await res.body.cancel();
     throw new Unreadable('large');

@@ -1,4 +1,4 @@
-import { PERMISSIONS, HARMLESS, BROAD_HOST, isBroadHost, hostLabel } from './permissions.js';
+import { PERMISSIONS, HARMLESS, BROAD_HOST, isBroadHost, isWildcardDomain, hostLabel } from './permissions.js';
 import { STORE } from './platform.js';
 
 // Chrome Web Store, and addons.mozilla.org for Firefox (which usually reports no update URL at all).
@@ -26,6 +26,14 @@ export function isFromStore(ext) {
   return ext.installType !== 'development' && updateSource(ext) === 'store';
 }
 
+// How far its site access reaches: "none", "sites" (specific hosts),
+// "domains" (whole domains with all subdomains) or "all" (every website).
+export function hostReach(hosts) {
+  if (!hosts.length) return 'none';
+  if (hosts.some(isBroadHost)) return 'all';
+  return hosts.some(isWildcardDomain) ? 'domains' : 'sites';
+}
+
 /**
  * What the extension is able to do, from its permissions.
  * This says nothing about whether it is trustworthy: a password manager
@@ -36,14 +44,17 @@ export function assessAccess(ext) {
   const hosts = ext.hostPermissions ?? [];
   const broad = hosts.some(isBroadHost);
 
-  if (broad) {
+  const reach = hostReach(hosts);
+  if (reach === 'all') {
     reasons.push({ ...BROAD_HOST });
-  } else if (hosts.length) {
+  } else if (reach !== 'none') {
+    // The number of sites says little: ten weather sites are not more
+    // dangerous than one webmail. What counts is how far the access reaches.
     const labels = [...new Set(hosts.map(hostLabel))];
     const shown = labels.slice(0, 3).join(', ') + (labels.length > 3 ? ` and ${labels.length - 3} more` : '');
     reasons.push({
-      weight: Math.min(5 + labels.length, 15),
-      title: `Can read and change data on ${labels.length} site${labels.length === 1 ? '' : 's'}`,
+      weight: reach === 'domains' ? 8 : 5,
+      title: `Can read and change data on ${labels.length} site${labels.length === 1 ? '' : 's'}${reach === 'domains' ? ', including their subdomains' : ''}`,
       detail: shown,
     });
   }
@@ -72,7 +83,7 @@ export function assessAccess(ext) {
   let level = 'basic';
   if (broad || score >= 40) level = 'full';
   else if (score >= 10 || hosts.length) level = 'limited';
-  return { score, level, reasons };
+  return { score, level, reasons, hostReach: reach };
 }
 
 // "22,000,000" or "1,000,000+" -> number

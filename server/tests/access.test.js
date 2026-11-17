@@ -93,6 +93,17 @@ test('an extension with no sensitive permissions is basic access', async () => {
   assert.deepEqual(result.reasons, []);
 });
 
+test('permissions it can ask for later are shown apart and do not raise the level', async () => {
+  const result = await lookupAccess(ID, {
+    fetchImpl: respond(packageOf({ permissions: ['storage'], optional_host_permissions: ['*://*/*'], optional_permissions: ['history'] })),
+  });
+  assert.equal(result.level, 'basic');
+  assert.equal(result.hostReach, 'none');
+  assert.deepEqual(result.canAskLater.map((r) => r.title), ['Can read and change data on all websites', 'Can read your browsing history']);
+  const none = await lookupAccess(ID, { fetchImpl: respond(packageOf({ permissions: ['storage'] })) });
+  assert.equal('canAskLater' in none, false);
+});
+
 test('unreadable packages come back as unavailable, with a code', async () => {
   assert.deepEqual(await lookupAccess(ID, { fetchImpl: respond('<html>not a crx</html>') }), { status: 'unavailable', code: 'format' });
   assert.deepEqual(await lookupAccess(ID, { fetchImpl: respond('', { status: 404 }) }), { status: 'unavailable', code: 'not_found' });
@@ -126,6 +137,12 @@ test('the download asks the store for the CRX of that id', async () => {
   await lookupAccess(ID, { fetchImpl: async (url) => { asked = url; return new Response('', { status: 404 }); } });
   assert.match(asked, /^https:\/\/clients2\.google\.com\/service\/update2\/crx\?/);
   assert.ok(asked.includes(`id%3D${ID}`));
+  assert.match(asked, /prodversion=200\.0/, 'a recent browser version, or newer extensions get 204');
+});
+
+test('a 204 from the store (no package for this browser version) is unavailable, not a crash', async () => {
+  const result = await lookupAccess(ID, { fetchImpl: async () => new Response(null, { status: 204 }) });
+  assert.deepEqual(result, { status: 'unavailable', code: 'download' });
 });
 
 test('the extension page shows what it can do, and still works when the package can\'t be read', async () => {
@@ -147,4 +164,15 @@ test('the extension page shows what it can do, and still works when the package 
   const broken = await get(fetchFor(() => new Response('', { status: 500 })));
   assert.equal(broken.status, 200);
   assert.match(await broken.text(), /couldn&#39;t read its permissions|couldn't read its permissions/);
+});
+
+test('the extension page lists what it can ask for later', async () => {
+  const DARK = 'eimadpbcbfnmbkopoojfekhnkhdbieeh';
+  const listing = readFileSync(new URL('../../extension/tests/fixtures/dark-reader.html', import.meta.url), 'utf8');
+  const pkg = packageOf({ permissions: ['storage'], optional_host_permissions: ['<all_urls>'] });
+  const fetchImpl = async (url) => (String(url).includes('chromewebstore.google.com') ? new Response(listing) : new Response(pkg));
+  const html = await (await handleRequest(new Request(`http://x/extension/dark-reader/${DARK}`), { fetchImpl })).text();
+  assert.match(html, /It can also ask for more later/);
+  assert.match(html, /Can read and change data on all websites/);
+  assert.match(html, /Basic access/, 'optional access does not change the level');
 });

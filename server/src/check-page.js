@@ -153,11 +153,19 @@ function accessHtml(access) {
   const list = access.reasons.map((r) => `
     <li class="${r.weight === 0 ? 'info' : r.weight >= 20 ? 'bad' : 'mixed'}"><span class="mark" aria-hidden="true">${r.weight === 0 ? '•' : '!'}</span>
       <div><strong>${escapeHtml(r.title)}</strong><span class="muted">${escapeHtml(r.detail)}</span></div></li>`).join('');
+  const later = access.canAskLater?.length
+    ? `<h3 class="later">It can also ask for more later</h3>
+    <p class="muted">These are not granted now. The browser asks you before it gets them.</p>
+    <ul class="signals">${access.canAskLater.map((r) => `
+    <li class="info"><span class="mark" aria-hidden="true">•</span>
+      <div><strong>${escapeHtml(r.title)}</strong><span class="muted">${escapeHtml(r.detail)}</span></div></li>`).join('')}</ul>`
+    : '';
   return `<section class="card access ${a.cls}">
     <h2>What it can do</h2>
     <div class="verdict"><span class="verdict-icon" aria-hidden="true">${access.level === 'basic' ? 'i' : '!'}</span>
       <div><strong>${a.label}</strong><span>${a.text}</span></div></div>
     ${list ? `<ul class="signals">${list}</ul>` : ''}
+    ${later}
     <p class="muted note">Read from the permissions in the extension's manifest in the store. This says what it is able to do, not whether it does. A password manager, for example, needs full access to work. <a href="${PERMISSIONS_PATH}">What the permission warnings mean</a></p>
   </section>`;
 }
@@ -291,6 +299,7 @@ const STYLE = `
   li.good .mark { background: var(--accent-soft); color: var(--accent); }
   li.bad .mark { background: var(--bad-soft); color: var(--bad); }
   li.mixed .mark { background: var(--mixed-soft); color: var(--mixed); }
+  h3.later { margin: 18px 0 4px; font-size: 15px; }
   li.info .mark { background: var(--bg); color: var(--muted); border: 1px solid var(--line); }
   dl { display: grid; grid-template-columns: max-content 1fr; gap: 8px 20px; margin: 0; }
   dt { color: var(--muted); } dd { margin: 0; overflow-wrap: anywhere; font-weight: 500; }

@@ -185,6 +185,11 @@ export const PERMISSIONS = {
     title: 'Can see your screen setup',
     detail: 'Can read the size and layout of your screens.',
   },
+  activeTab: {
+    weight: 1,
+    title: 'Can use the page you are on, when you click it',
+    detail: 'Gets temporary access to the current page only after you click the extension.',
+  },
   webNavigation: {
     weight: 5,
     title: 'Can follow where you go',
@@ -236,7 +241,7 @@ export const PERMISSIONS = {
 // not scored (plus a few Firefox-only ones). Anything that is neither here nor
 // in PERMISSIONS is listed as "not rated" instead of silently counting as zero.
 export const HARMLESS = new Set([
-  'accessibilityFeatures.modify', 'accessibilityFeatures.read', 'activeTab', 'alarms', 'audio', 'background',
+  'accessibilityFeatures.modify', 'accessibilityFeatures.read', 'alarms', 'audio', 'background',
   'clipboardWrite', 'contextMenus', 'declarativeContent', 'declarativeNetRequest', 'dns',
   'downloads.ui', 'enterprise.hardwarePlatform',
   'favicon', 'fileBrowserHandler', 'fileSystemProvider', 'fontSettings', 'gcm', 'idle', 'loginState',
@@ -259,6 +264,11 @@ export function isBroadHost(pattern) {
   if (BROAD_PATTERNS.has(pattern)) return true;
   const m = /^(\*|https?|wss?):\/\/([^/]*)\//.exec(pattern);
   return Boolean(m && m[2] === '*');
+}
+
+// "https://*.google.com/*": a whole domain with all its subdomains.
+export function isWildcardDomain(pattern) {
+  return /^(\*|https?|wss?|ftp):\/\/\*\.[^/]+\//.test(pattern);
 }
 
 // Turns a match pattern like "https://*.google.com/*" into "google.com".
