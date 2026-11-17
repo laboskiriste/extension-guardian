@@ -151,7 +151,7 @@ function accessHtml(access) {
   }
   const a = ACCESS[access.level];
   const list = access.reasons.map((r) => `
-    <li class="${r.weight >= 20 ? 'bad' : 'mixed'}"><span class="mark" aria-hidden="true">!</span>
+    <li class="${r.weight === 0 ? 'info' : r.weight >= 20 ? 'bad' : 'mixed'}"><span class="mark" aria-hidden="true">${r.weight === 0 ? '•' : '!'}</span>
       <div><strong>${escapeHtml(r.title)}</strong><span class="muted">${escapeHtml(r.detail)}</span></div></li>`).join('');
   return `<section class="card access ${a.cls}">
     <h2>What it can do</h2>
@@ -291,6 +291,7 @@ const STYLE = `
   li.good .mark { background: var(--accent-soft); color: var(--accent); }
   li.bad .mark { background: var(--bad-soft); color: var(--bad); }
   li.mixed .mark { background: var(--mixed-soft); color: var(--mixed); }
+  li.info .mark { background: var(--bg); color: var(--muted); border: 1px solid var(--line); }
   dl { display: grid; grid-template-columns: max-content 1fr; gap: 8px 20px; margin: 0; }
   dt { color: var(--muted); } dd { margin: 0; overflow-wrap: anywhere; font-weight: 500; }
   .store-link { margin: 16px 0 0; }

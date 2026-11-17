@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { PERMISSIONS, isBroadHost, hostLabel, describePermission } from '../src/lib/permissions.js';
+import { PERMISSIONS, HARMLESS, isBroadHost, hostLabel, describePermission } from '../src/lib/permissions.js';
 
 // Permissions that don't give access to anything private, so they have no
 // entry and add nothing to the access score. Every Chrome permission (and
@@ -8,11 +8,11 @@ import { PERMISSIONS, isBroadHost, hostLabel, describePermission } from '../src/
 // new one is a decision and not an oversight.
 const BENIGN = [
   'accessibilityFeatures.modify', 'accessibilityFeatures.read', 'activeTab', 'alarms', 'audio', 'background',
-  'clipboardWrite', 'contextMenus', 'declarativeContent', 'declarativeNetRequest', 'dns', 'documentScan',
-  'downloads.ui', 'enterprise.deviceAttributes', 'enterprise.hardwarePlatform', 'enterprise.networkingAttributes',
+  'clipboardWrite', 'contextMenus', 'declarativeContent', 'declarativeNetRequest', 'dns',
+  'downloads.ui', 'enterprise.hardwarePlatform',
   'favicon', 'fileBrowserHandler', 'fileSystemProvider', 'fontSettings', 'gcm', 'idle', 'loginState',
-  'notifications', 'offscreen', 'power', 'printerProvider', 'printing', 'printingMetrics', 'processes', 'runtime',
-  'search', 'sidePanel', 'storage', 'system.cpu', 'system.display', 'system.memory', 'system.storage', 'tabGroups',
+  'notifications', 'offscreen', 'power', 'printerProvider', 'printing', 'printingMetrics', 'runtime',
+  'search', 'sidePanel', 'storage', 'tabGroups',
   'tts', 'ttsEngine', 'unlimitedStorage', 'wallpaper',
 ];
 
@@ -25,6 +25,8 @@ const ALL = [
   'nativeMessaging', 'pageCapture', 'platformKeys', 'privacy', 'proxy', 'readingList', 'scripting', 'sessions',
   'tabCapture', 'tabs', 'topSites', 'userScripts', 'vpnProvider', 'webAuthenticationProxy', 'webNavigation',
   'webRequest', 'webRequestAuthProvider', 'webRequestBlocking',
+  'documentScan', 'enterprise.deviceAttributes', 'enterprise.networkingAttributes', 'processes',
+  'system.cpu', 'system.display', 'system.memory', 'system.storage',
 ];
 
 test('every permission is described or known to be harmless', () => {
@@ -33,6 +35,11 @@ test('every permission is described or known to be harmless', () => {
     assert.ok(!(PERMISSIONS[name] && BENIGN.includes(name)), `${name} is in both lists`);
   }
   for (const name of Object.keys(PERMISSIONS)) assert.ok(ALL.includes(name), `${name} is not a known permission`);
+});
+
+test('the harmless list matches the permissions we decided not to score', () => {
+  for (const name of BENIGN) assert.ok(HARMLESS.has(name), `${name} is missing from HARMLESS`);
+  for (const name of HARMLESS) assert.ok(!PERMISSIONS[name], `${name} is both scored and harmless`);
 });
 
 test('every described permission has a weight, a title and a detail', () => {

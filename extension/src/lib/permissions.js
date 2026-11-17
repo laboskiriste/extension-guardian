@@ -145,6 +145,46 @@ export const PERMISSIONS = {
     title: 'Can see your location',
     detail: 'Can find out where you are.',
   },
+  processes: {
+    weight: 10,
+    title: 'Can see what the browser is running',
+    detail: 'Can read which processes the browser runs and how much processor and memory each one uses.',
+  },
+  'enterprise.deviceAttributes': {
+    weight: 10,
+    title: 'Can read device identifiers',
+    detail: 'Can read the serial number and ID of your device on managed ChromeOS devices.',
+  },
+  'enterprise.networkingAttributes': {
+    weight: 10,
+    title: 'Can read network details',
+    detail: 'Can read your network address on managed ChromeOS devices.',
+  },
+  documentScan: {
+    weight: 10,
+    title: 'Can use your scanner',
+    detail: 'Can scan documents from scanners connected to your computer (ChromeOS).',
+  },
+  'system.memory': {
+    weight: 5,
+    title: 'Can see your computer\'s memory',
+    detail: 'Can read how much memory your computer has and how much is free.',
+  },
+  'system.cpu': {
+    weight: 5,
+    title: 'Can see your processor',
+    detail: 'Can read the processor model and how busy it is.',
+  },
+  'system.storage': {
+    weight: 5,
+    title: 'Can see your storage devices',
+    detail: 'Can list your drives and removable disks, with their size and free space.',
+  },
+  'system.display': {
+    weight: 5,
+    title: 'Can see your screen setup',
+    detail: 'Can read the size and layout of your screens.',
+  },
   webNavigation: {
     weight: 5,
     title: 'Can follow where you go',
@@ -191,6 +231,21 @@ export const PERMISSIONS = {
     detail: 'Learns which pages and resources its rules matched.',
   },
 };
+
+// Permissions that give no access to anything private and are deliberately
+// not scored (plus a few Firefox-only ones). Anything that is neither here nor
+// in PERMISSIONS is listed as "not rated" instead of silently counting as zero.
+export const HARMLESS = new Set([
+  'accessibilityFeatures.modify', 'accessibilityFeatures.read', 'activeTab', 'alarms', 'audio', 'background',
+  'clipboardWrite', 'contextMenus', 'declarativeContent', 'declarativeNetRequest', 'dns',
+  'downloads.ui', 'enterprise.hardwarePlatform',
+  'favicon', 'fileBrowserHandler', 'fileSystemProvider', 'fontSettings', 'gcm', 'idle', 'loginState',
+  'notifications', 'offscreen', 'power', 'printerProvider', 'printing', 'printingMetrics', 'runtime',
+  'search', 'sidePanel', 'storage', 'tabGroups',
+  'tts', 'ttsEngine', 'unlimitedStorage', 'wallpaper',
+  // Firefox
+  'menus', 'theme', 'find', 'captivePortal',
+]);
 
 export const BROAD_HOST = {
   weight: 30,

@@ -31,3 +31,11 @@ test('the list as text', () => {
 test('an empty list', () => {
   assert.equal(listAsText([], { now: NOW }), 'Extension Guardian: 0 extensions, 0 turned on (2026-11-01)\n');
 });
+
+test('the recommendation text never offers reassurance for full access', async () => {
+  const { actionText, ACTION_LABEL } = await import('../src/lib/report.js');
+  assert.match(actionText('review', 'full'), /only if you need it/);
+  assert.match(actionText('act', 'basic'), /remove it/);
+  assert.match(actionText('monitor', 'basic'), /warn you if/);
+  for (const label of Object.values(ACTION_LABEL)) assert.doesNotMatch(label, /\b(safe|fine|ok)\b/i);
+});

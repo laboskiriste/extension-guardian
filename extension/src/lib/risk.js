@@ -1,4 +1,4 @@
-import { PERMISSIONS, BROAD_HOST, isBroadHost, hostLabel } from './permissions.js';
+import { PERMISSIONS, HARMLESS, BROAD_HOST, isBroadHost, hostLabel } from './permissions.js';
 import { STORE } from './platform.js';
 
 // Chrome Web Store, and addons.mozilla.org for Firefox (which usually reports no update URL at all).
@@ -48,11 +48,23 @@ export function assessAccess(ext) {
     });
   }
 
+  const unrated = [];
   for (const name of ext.permissions ?? []) {
     const info = PERMISSIONS[name];
-    if (!info) continue;
+    if (!info) {
+      if (!HARMLESS.has(name)) unrated.push(name);
+      continue;
+    }
     const weight = broad && info.broadWeight ? info.broadWeight : info.weight;
     reasons.push({ weight, title: info.title, detail: info.detail });
+  }
+  // Unknown permissions don't change the level, but they are not hidden either.
+  if (unrated.length) {
+    reasons.push({
+      weight: 0,
+      title: 'Permissions we don\'t rate',
+      detail: `${unrated.join(', ')}. They are not part of the access level, so look them up if you are unsure.`,
+    });
   }
 
   reasons.sort((a, b) => b.weight - a.weight);

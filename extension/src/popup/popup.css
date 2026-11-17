@@ -133,6 +133,9 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--accent); outlin
 
 .ext-body { padding: 0 12px 12px 50px; }
 .reasons { margin: 0; padding: 0; list-style: none; }
+.rec { margin: 0 0 8px; padding: 8px 10px; border-radius: 8px; border: 1px solid var(--border); background: var(--surface); }
+.rec.review { border-color: var(--medium); background: var(--medium-bg); }
+.rec.act { border-color: var(--high); background: var(--high-bg); }
 .reasons li { padding: 4px 0; }
 .reasons strong { display: block; font-weight: 600; }
 .reasons span { color: var(--muted); }

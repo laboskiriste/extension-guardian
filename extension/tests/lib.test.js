@@ -107,6 +107,19 @@ test('access levels come from permissions', () => {
   assert.equal(full.score, 60);
 });
 
+test('system information permissions are listed, and unknown ones are shown as not rated', () => {
+  const mem = assessAccess(ext({ permissions: ['system.memory', 'storage'] }));
+  assert.equal(mem.reasons[0].title, 'Can see your computer\'s memory');
+  assert.equal(mem.level, 'basic', 'a single low-weight permission does not change the level');
+  const unknown = assessAccess(ext({ permissions: ['storage', 'someFuturePermission', 'anotherOne'] }));
+  assert.equal(unknown.level, 'basic');
+  assert.equal(unknown.score, 0);
+  assert.equal(unknown.reasons.length, 1);
+  assert.equal(unknown.reasons[0].title, 'Permissions we don\'t rate');
+  assert.match(unknown.reasons[0].detail, /someFuturePermission, anotherOne/);
+  assert.equal(assessAccess(ext({ permissions: ['storage', 'alarms', 'activeTab'] })).reasons.length, 0, 'harmless ones add nothing');
+});
+
 test('popularity, update date and trader status are context, not part of the score', () => {
   const r = assessRisk(ext(FULL), { store: store({ users: '20,000,000', trader: 'trader' }), now: NOW });
   assert.equal(r.level, 'low');

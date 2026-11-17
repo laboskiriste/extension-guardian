@@ -1,9 +1,9 @@
-import { assessRisk, isFromStore, updateSource } from '../lib/risk.js';
+import { assessRisk, isFromStore, recommend, updateSource } from '../lib/risk.js';
 import { edgeStorePageUrl, reviewPageUrl, searchPageUrl, storePageUrl } from '../lib/store.js';
 import { IS_FIREFOX, STORE } from '../lib/platform.js';
 import { normalizeSite } from '../lib/sites.js';
 import { replacementFor } from '../lib/replacements.js';
-import { ACCESS_LABEL, RISK_LABEL, listAsText } from '../lib/report.js';
+import { ACCESS_LABEL, ACTION_LABEL, RISK_LABEL, actionText, listAsText } from '../lib/report.js';
 import '../lib/family.js';
 
 const app = document.getElementById('app');
@@ -332,6 +332,7 @@ function keepOffSites(ext) {
 function extensionRow({ ext, store, risk }) {
   const open = expanded.has(ext.id);
   const toggle = () => { open ? expanded.delete(ext.id) : expanded.add(ext.id); render(); };
+  const action = recommend(risk.access.level, risk.level);
   return h('li', { id: `ext-${ext.id}`, class: `ext ${ext.enabled ? '' : 'disabled'} ${open ? 'open' : ''}` },
     h('button', {
       class: 'ext-head', onclick: toggle, 'aria-expanded': String(open), 'aria-controls': open ? `body-${ext.id}` : null, 'data-key': `head-${ext.id}`,
@@ -347,6 +348,7 @@ function extensionRow({ ext, store, risk }) {
     open && h('div', { class: 'ext-body', id: `body-${ext.id}` },
       store?.ownershipChanged && h('p', { class: 'warn' },
         `Developer changed from "${store.ownershipChanged.from}" to "${store.ownershipChanged.to}".`),
+      h('p', { class: `rec ${action}` }, h('strong', {}, `${ACTION_LABEL[action]}. `), actionText(action, risk.access.level)),
       h('h3', {}, 'Warning signs and context'),
       riskReasons(ext, store, risk),
       h('h3', {}, `What it can do · ${ACCESS_LABEL[risk.access.level]}`),

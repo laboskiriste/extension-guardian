@@ -3,6 +3,15 @@
 
 // Labels say what was found, never that an extension is safe.
 export const RISK_LABEL = { high: 'Attention required', watch: 'Review recommended', low: 'No warning signs' };
+// What to do, from risk.js recommend(). Full access is never just "monitor".
+export const ACTION_LABEL = { monitor: 'Nothing to do now', review: 'Worth a look', act: 'Act now' };
+export function actionText(action, accessLevel) {
+  if (action === 'act') return 'Find out why before you keep it. If you are not sure, remove it.';
+  if (action === 'monitor') return 'Guardian will warn you if its owner or permissions change.';
+  return accessLevel === 'full'
+    ? 'It can read or change information on websites you visit. Keep it only if you need it and understand why it needs this access.'
+    : 'Check that it still needs what it asks for.';
+}
 export const ACCESS_LABEL = { full: 'Full access', limited: 'Limited access', basic: 'Basic access' };
 
 // `rows` are { ext, store, risk } as the popup builds them.
