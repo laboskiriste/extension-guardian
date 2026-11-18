@@ -2,7 +2,7 @@
 
 Versions of the Extension Guardian browser extension. The server and web checker in `../server` are deployed separately and are not listed here.
 
-## 0.2.0 (unreleased)
+## 0.2.0 (2026-11-18)
 
 - **No label means safe:** the ratings are now "Attention required", "Review recommended" and "No warning signs". The green "Low risk" is gone. Guardian reads declared permissions and public store information, not code, so "no warning signs" is never a guarantee.
 - **Popularity is context, not trust:** user count, update date, contact details and trader status no longer raise or lower the rating. They are listed as neutral facts. Popular extensions are the ones most worth buying or hijacking, and a small or finished one is not unsafe for being small or finished.
