@@ -54,11 +54,11 @@ WHAT IT CHECKS
 • Installed behind your back: flags extensions that another program added, or that update from outside the official stores.
 • New owner and removal from the store: for extensions you installed from the Chrome Web Store, it warns you when the developer changes (the most common sign of a sale) or when the extension is taken down. Developer checks for Edge Add-ons are coming.
 
-TWO CLEAR RATINGS
-• Access: what each extension can do (full, limited or basic), explained in plain language.
-• Risk: whether you should trust it, based on real signals: who makes it, how many people use it, whether it is maintained, and the warnings above.
+WHAT IT SHOWS
+• Access: what each extension can do (full, limited or basic), in plain language, with a suggestion of what to do.
+• Warning signs: changes we can see, such as a new owner, new permissions, removal from the store, or an extension added by another program. Users, update date and developer details are shown as context, not judged.
 
-A password manager needs full access to work, so full access alone doesn't mean danger. Extension Guardian tells the two apart, so you only get alerts that matter.
+A password manager needs full access to work, so full access alone doesn't mean danger. Extension Guardian reads declared permissions and public store information, not code, so "no warning signs" is never a guarantee of safety.
 
 ONE CLICK TO ACT
 Turn off or remove an extension right from the list, or open its store page.
@@ -79,7 +79,7 @@ PRIVATE BY DESIGN
 **Short description** (shown in search results)
 
 ```
-Warns you when an extension is risky, gains new permissions, changes owner or was installed behind your back.
+Shows what your extensions can do, and warns you when one gains new permissions, changes owner or was installed behind your back.
 ```
 
 **Search terms** (up to 7)
@@ -101,7 +101,7 @@ spyware
 ```
 Extension Guardian reads the list of installed extensions with the management permission and rates each one. It changes another extension only when the user asks: by clicking Turn off or Remove in the popup, or through a "Keep off on these sites" rule the user set up (optional tabs permission, requested only then).
 
-To test: install a few extensions, open the popup and expand any extension to see its Access and Risk ratings. Press "Check now" to look up developer information. That sends only extension IDs to our server (https://guardian.tinyward.org/v1/store), which reads the public Chrome Web Store page and returns JSON. No account or sign-in is needed.
+To test: install a few extensions, open the popup and expand any extension to see its Access level, warning signs and suggested action. Press "Check now" to look up developer information. That sends only extension IDs to our server (https://guardian.tinyward.org/v1/store), which reads the public Chrome Web Store page and returns JSON. No account or sign-in is needed.
 
 Source code: https://github.com/laboskiriste/extension-guardian
 ```

@@ -4,7 +4,7 @@
     "description": "Extension name in the store and browser."
   },
   "extDescription": {
-    "message": "Uzantılarınızın güvenli olup olmadığını kontrol eder; biri sahip değiştirirse, yeni izin alırsa veya mağazadan kalkarsa uyarır.",
+    "message": "Uzantılarınızın neler yapabildiğini gösterir; biri sahip değiştirirse, yeni izin alırsa veya mağazadan kalkarsa uyarır.",
     "description": "Short store description (max 132 characters)."
   }
 }

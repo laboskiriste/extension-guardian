@@ -42,11 +42,11 @@ WHAT IT CHECKS
 • Removed from Firefox Add-ons: Mozilla takes down malicious add-ons. If one you have disappears, you'll know.
 • Installed behind your back: flags add-ons that another program added, and ones that aren't listed on Firefox Add-ons at all.
 
-TWO CLEAR RATINGS
-• Access: what each add-on can do (full, limited or basic), in plain language.
-• Risk: whether to trust it, from real signals: who makes it, how many people use it, whether it's maintained, and the warnings above.
+WHAT IT SHOWS
+• Access: what each add-on can do (full, limited or basic), in plain language, with a suggestion of what to do.
+• Warning signs: changes we can see, such as new authors, new permissions, removal from Firefox Add-ons, or an add-on installed by another program. Users, update date and developer details are shown as context, not judged.
 
-A password manager needs full access to work, so full access alone doesn't mean danger. Extension Guardian tells the two apart, so you only get alerts that matter.
+A password manager needs full access to work, so full access alone doesn't mean danger. Extension Guardian reads declared permissions and public add-on information, not code, so "no warning signs" is never a guarantee of safety.
 
 PRIVATE BY DESIGN
 • Your list of add-ons and all results stay on your device.

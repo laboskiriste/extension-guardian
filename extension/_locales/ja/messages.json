@@ -4,7 +4,7 @@
     "description": "Extension name in the store and browser."
   },
   "extDescription": {
-    "message": "拡張機能が安全かを確認し、所有者の変更、新しい権限の追加、ストアからの削除があったときに警告します。",
+    "message": "拡張機能にできることを表示し、所有者の変更、新しい権限の追加、ストアからの削除があったときに警告します。",
     "description": "Short store description (max 132 characters)."
   }
 }

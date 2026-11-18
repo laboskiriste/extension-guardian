@@ -22,7 +22,7 @@ Extension Guardian: Extension Security Checker
 **Summary** (from `_locales/en`, max 132 characters)
 
 ```
-Checks if your extensions are safe, and warns you when one changes owner, gains new permissions or disappears from its store.
+Shows what your extensions can do, and warns you when one changes owner, gains new permissions or disappears from its store.
 ```
 
 In the other languages the store shows this English description. If it asks for a detailed description per language, paste the English one.
@@ -40,11 +40,11 @@ WHAT IT CHECKS
 • Removed from the store – Google often takes malware down this way. If it was removed, you'll know.
 • Installed behind your back – flags extensions that another program added, or that update from outside the Chrome Web Store.
 
-TWO CLEAR RATINGS
-• Access: what each extension can do (full, limited or basic), explained in plain language.
-• Risk: whether you should trust it, based on real signals: who makes it, how many people use it, whether it is maintained, and the warnings above.
+WHAT IT SHOWS
+• Access: what each extension can do (full, limited or basic), in plain language, with a suggestion of what to do.
+• Warning signs: changes we can see, such as a new owner, new permissions, removal from the store, or an extension added by another program. Users, update date and developer details are shown as context, not judged.
 
-A password manager needs full access to work, so full access alone doesn't mean danger. Extension Guardian tells the two apart, so you only get alerts that matter.
+A password manager needs full access to work, so full access alone doesn't mean danger. Extension Guardian reads declared permissions and public store information, not code, so "no warning signs" is never a guarantee of safety.
 
 ONE CLICK TO ACT
 Turn off or remove an extension right from the list, or open its store page. If an extension was removed from the store, Extension Guardian tells you what to do next, and for well-known ones what to use instead.
@@ -73,14 +73,14 @@ Extension Guardian is part of Tinyward, small privacy tools with as few permissi
 **Single purpose**
 
 ```
-Extension Guardian has one purpose: protecting users from their installed extensions. It shows which ones are risky, warns them when an extension changes in a dangerous way (new owner, new permissions, removal from the Chrome Web Store), and can keep chosen extensions turned off on sensitive sites such as the user's bank.
+Extension Guardian has one purpose: protecting users from their installed extensions. It shows what they can do, warns them when an extension changes in a dangerous way (new owner, new permissions, removal from the Chrome Web Store), and can keep chosen extensions turned off on sensitive sites such as the user's bank.
 ```
 
 **Permission justifications**
 
 `management`
 ```
-Required to read the list of installed extensions and their permissions, which is the core of the product, and to let the user turn off or remove a risky extension from the popup. The extension changes another extension only when the user asks: by clicking Turn off or Remove, or through a "Keep off on these sites" rule the user created for that extension.
+Required to read the list of installed extensions and their permissions, which is the core of the product, and to let the user turn off or remove an extension from the popup. The extension changes another extension only when the user asks: by clicking Turn off or Remove, or through a "Keep off on these sites" rule the user created for that extension.
 ```
 
 `storage`

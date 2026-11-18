@@ -4,7 +4,7 @@
     "description": "Extension name in the store and browser."
   },
   "extDescription": {
-    "message": "Checkt of je extensies veilig zijn en waarschuwt als er een van eigenaar wisselt, meer rechten krijgt of uit de store verdwijnt.",
+    "message": "Toont wat je extensies kunnen doen en waarschuwt als er een van eigenaar wisselt, meer rechten krijgt of uit de store verdwijnt.",
     "description": "Short store description (max 132 characters)."
   }
 }

@@ -28,10 +28,13 @@ When an extension is removed from the store, Guardian says what to do next and, 
 
 **Keep off on these sites** (Chrome): pick sites where an extension should never run, such as your bank. Guardian turns it off while one of those sites is open in any tab and back on when you close it. This needs the optional `tabs` permission, which Chrome asks for only when you add a first site. The address is checked on your device and never sent anywhere.
 
-Every extension gets two ratings:
+Every extension shows:
 
-- **Access** (full, limited, basic): what its permissions let it do, in plain language.
-- **Risk** (high, watch, low): whether to trust it. A password manager needs full access, so full access alone isn't treated as danger. Risk comes from the warnings above plus store signals: who makes it, how many people use it, and whether it is maintained.
+- **Access** (full, limited, basic): what its permissions let it do, in plain language, and how far its site access reaches.
+- **Warning signs** (attention required, review recommended, no warning signs): the changes and facts we can see, such as a new owner, new permissions, removal from the store or an install by another program. Users, update date and developer details are shown as context, not judged.
+- **A suggested action** (act now, worth a look, nothing to do now). Full access is never "nothing to do": a password manager needs it, but it is still worth knowing.
+
+Guardian reads declared permissions and public store information, not code. An extension can turn harmful without any visible change, so "no warning signs" is never a guarantee of safety.
 
 ## Privacy
 

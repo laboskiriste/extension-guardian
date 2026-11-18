@@ -4,7 +4,7 @@
     "description": "Extension name in the store and browser."
   },
   "extDescription": {
-    "message": "Prüft, ob deine Erweiterungen sicher sind, und warnt bei neuem Besitzer, neuen Rechten oder wenn eine aus dem Store verschwindet.",
+    "message": "Zeigt, was deine Erweiterungen können, und warnt bei neuem Besitzer, neuen Rechten oder wenn eine aus dem Store verschwindet.",
     "description": "Short store description (max 132 characters)."
   }
 }

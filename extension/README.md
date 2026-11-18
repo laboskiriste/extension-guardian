@@ -2,9 +2,10 @@
 
 A browser extension for Chrome (and Edge, Brave) and Firefox that watches your other extensions and warns you when one becomes dangerous. Current version: 0.1.5. Changes are in [CHANGELOG.md](CHANGELOG.md).
 
-- **Two ratings** for every installed extension:
-  - **Access** (full, limited, basic): what its permissions let it do, explained in plain language.
-  - **Risk** (high, watch, low): whether to trust it. Critical signals (new owner, removed from the store, sideloaded, updates from outside the store) always mean high risk. Store signals adjust the rest: few users and no updates for years raise it, a large user base, recent updates and a registered business lower it.
+- **What it can do and what to do about it**, for every installed extension:
+  - **Access** (full, limited, basic): what its permissions let it do, explained in plain language, and how far its site access reaches.
+  - **Warning signs** (attention required, review recommended, no warning signs): critical signals (new owner, removed from the store, sideloaded, updates from outside the store) always mean attention required. User count, update date, contact details and trader status are shown as context and never change the rating.
+  - **A suggested action** (act now, worth a look, nothing to do now). Full access is never "nothing to do now".
 - **New permissions after an update**, such as an extension that suddenly asks to read all websites.
 - **Ownership change**: the developer listed in the Chrome Web Store is different from before, which often means the extension was sold.
 - **Removed from the store**: Google often takes down malware this way.
@@ -12,7 +13,7 @@ A browser extension for Chrome (and Edge, Brave) and Firefox that watches your o
 - **Help after a removal**: what to do next, and a trusted replacement for well-known extensions such as uBlock Origin (`src/lib/replacements.js`).
 - **Keep off on these sites** (Chrome only): turns an extension off while one of the user's sites is open in any tab, and back on once it's closed. It needs the optional `tabs` permission, asked for when the user adds a first site. The tab address is checked on the device only.
 
-Risk scoring and change detection run locally. Chrome does not let extensions read Chrome Web Store pages, so developer information comes from a small server, `../server`. The extension sends it only the IDs of installed extensions, nothing about the user. In Firefox, the extension asks the public addons.mozilla.org API directly and never contacts our server.
+Rating and change detection run locally. Chrome does not let extensions read Chrome Web Store pages, so developer information comes from a small server, `../server`. The extension sends it only the IDs of installed extensions, nothing about the user. In Firefox, the extension asks the public addons.mozilla.org API directly and never contacts our server.
 
 ## Try it
 
@@ -37,7 +38,7 @@ npm run package:firefox  # Firefox zip in ../store, built in build/firefox
 | Path | What it does |
 | --- | --- |
 | `src/background.js` | Service worker: scans, store checks, alerts, badge, notifications |
-| `src/lib/risk.js` | Risk score |
+| `src/lib/risk.js` | Access level, warning signs and suggested action |
 | `src/lib/permissions.js` | Permission weights and plain-language text |
 | `src/lib/changes.js` | Detects new permissions, owner changes and store removal |
 | `src/lib/store.js` | Parses Chrome Web Store pages (used by the server), asks the server for results, and asks Firefox Add-ons directly in Firefox |
