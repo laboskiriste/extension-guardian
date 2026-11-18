@@ -168,7 +168,7 @@ test('the sitemap lists the main pages once, and robots.txt points to it', async
   }
   for (const i of INCIDENTS) assert.ok(locs.includes(`/incidents/${i.slug}`), i.slug);
   for (const e of REPORT.stale) assert.ok(locs.includes(extensionPath(e.id, e.name)), e.name);
-  assert.ok(locs.length < 40, `${locs.length} URLs: keep the sitemap to the main pages`);
+  assert.ok(locs.length < 100, `${locs.length} URLs: keep the sitemap to pages with something of their own to say`);
   assert.equal(new Set(locs).size, locs.length);
   for (const path of locs) assert.equal((await get(path)).status, 200, path);
   const robots = await body('/robots.txt');
@@ -382,4 +382,22 @@ test('the permissions guide quotes the report figure it relies on', async () => 
   assert.ok(page.includes(`${REPORT.broad} of ${REPORT.listed}`), 'the 94 of 150 figure must match the report');
   assert.match(page, /<meta property="og:title" content="[^"]*">/, 'quotes in the title must not break the meta tag');
   assert.match(page, /rel="canonical" href="https:\/\/guardian\.tinyward\.org\/guides\//);
+});
+
+test('the sitemap lists the pages of removed incident extensions, at their canonical address', () => {
+  const xml = renderSitemap();
+  const locs = [...xml.matchAll(/<loc>https:\/\/guardian\.tinyward\.org([^<]*)<\/loc>/g)].map((m) => m[1]);
+  const reported = INCIDENTS.flatMap((i) => i.extensions.filter((e) => e.store === 'chrome'));
+  assert.ok(reported.length >= 28);
+  for (const e of reported) {
+    const path = extensionPath(e.id, e.name);
+    assert.ok(locs.includes(path), e.name);
+    // The page itself names the same address as canonical, so Google isn't sent through a redirect.
+    const html = renderCheckPage({ id: e.id, info: { status: 'not_found' } });
+    assert.ok(html.includes(`rel="canonical" href="https://guardian.tinyward.org${path}"`), `${e.name} canonical`);
+  }
+  // Edge-only listings have no Chrome Web Store page.
+  for (const e of INCIDENTS.flatMap((i) => i.extensions.filter((x) => x.store === 'edge'))) {
+    assert.ok(!locs.some((p) => p.endsWith(`/${e.id}`)), `${e.name} is Edge only`);
+  }
 });

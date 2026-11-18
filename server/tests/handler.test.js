@@ -86,7 +86,9 @@ test('popular page, sitemap and robots.txt', async () => {
   const { INCIDENTS } = await import('../src/incidents.js');
   const locs = (await sitemap.text()).match(/<loc>[^<]+<\/loc>/g);
   assert.equal(new Set(locs).size, locs.length);
-  assert.equal(locs.length, new Set(REPORT.stale.map((e) => e.id)).size + INCIDENTS.length + 8);
+  const reported = new Set(INCIDENTS.flatMap((i) => i.extensions.filter((e) => e.store === 'chrome').map((e) => e.id)));
+  const stale = new Set(REPORT.stale.map((e) => e.id));
+  assert.equal(locs.length, new Set([...stale, ...reported]).size + INCIDENTS.length + 8);
   assert.match(await (await get('/robots.txt')).text(), /Sitemap: .+\/sitemap\.xml/);
 });
 

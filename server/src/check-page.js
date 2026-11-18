@@ -919,7 +919,11 @@ ${CTA}`,
 // of them (Search Console, Nov 2026: 0 of 153 indexed). The stale extensions
 // from the report stay, since the report links to them.
 export function renderSitemap() {
-  const extensions = REPORT.stale.map((e) => extensionPath(e.id, e.name));
+  // The extensions named in incident reports are removed from the store and
+  // have a page of their own ("removed after a malware report"). People who
+  // still have one installed search for its name, so these pages go in.
+  const reported = INCIDENTS.flatMap((i) => i.extensions.filter((e) => e.store === 'chrome').map((e) => extensionPath(e.id, e.name)));
+  const extensions = [...REPORT.stale.map((e) => extensionPath(e.id, e.name)), ...reported];
   const urls = [...new Set(['/', '/popular', REPORT_PATH, HOW_PATH, SELL_PATH, PERMISSIONS_PATH, INCIDENTS_PATH, ...INCIDENTS.map(incidentPath), '/privacy', ...extensions])];
   return `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
