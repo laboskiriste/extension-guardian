@@ -1,4 +1,4 @@
-import { describePermission, hostLabel, isBroadHost } from './permissions.js';
+import { describePermission, hostLabel, isBroadHost, isWildcardDomain, uncoveredHosts } from './permissions.js';
 import { updateSource } from './risk.js';
 import { STORE } from './platform.js';
 
@@ -50,7 +50,7 @@ export function diffSnapshots(prev, cur) {
       detail: perms.map(describePermission).join('; '),
     });
   }
-  const hosts = added(prev.hostPermissions, cur.hostPermissions);
+  const hosts = uncoveredHosts(prev.hostPermissions, cur.hostPermissions);
   if (hosts.length) {
     const broad = hosts.some(isBroadHost) && !prev.hostPermissions.some(isBroadHost);
     changes.push({
@@ -59,7 +59,9 @@ export function diffSnapshots(prev, cur) {
       title: broad ? `${cur.name} can now access all websites` : `${cur.name} can now access more websites`,
       detail: broad
         ? 'After its latest update it can read and change everything on every page you open.'
-        : [...new Set(hosts.map(hostLabel))].join(', '),
+        : [...new Set(hosts.map(hostLabel))]
+          .map((label) => (hosts.some((h) => hostLabel(h) === label && isWildcardDomain(h)) ? `${label} and its subdomains` : label))
+          .join(', '),
     });
   }
   if (prev.updateSource !== cur.updateSource) {

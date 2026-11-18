@@ -1,0 +1,85 @@
+{
+  "note": "SYNTHETIC. These model the documented pattern (a bought or hijacked extension ships a harmful update) to check what Guardian's change detection can and cannot see. They are not recovered data from any real extension.",
+  "scenarios": [
+    {
+      "name": "bought, publisher changes, manifest unchanged",
+      "kind": "attack",
+      "before": { "version": "1.0", "permissions": ["storage"], "hostPermissions": ["<all_urls>"], "store": { "status": "ok", "offeredBy": "Original Developer", "email": "dev@old.example" } },
+      "after":  { "version": "1.1", "permissions": ["storage"], "hostPermissions": ["<all_urls>"], "store": { "status": "ok", "offeredBy": "Northwind Digital LLC", "email": "ops@new.example" } },
+      "expect": ["ownership_changed", "contact_changed"]
+    },
+    {
+      "name": "bought, publisher changes and new powerful permission",
+      "kind": "attack",
+      "before": { "version": "1.0", "permissions": ["storage"], "hostPermissions": ["https://example.com/*"], "store": { "status": "ok", "offeredBy": "Original Developer" } },
+      "after":  { "version": "2.0", "permissions": ["storage", "cookies"], "hostPermissions": ["<all_urls>"], "store": { "status": "ok", "offeredBy": "Northwind Digital LLC" } },
+      "expect": ["new_permissions", "new_hosts", "ownership_changed"]
+    },
+    {
+      "name": "account sold quietly: same publisher, same manifest, new code",
+      "kind": "attack",
+      "limitation": "Nothing observable changes. Guardian cannot see this, and says so.",
+      "before": { "version": "1.0", "permissions": ["storage"], "hostPermissions": ["<all_urls>"], "store": { "status": "ok", "offeredBy": "Original Developer", "email": "dev@old.example" } },
+      "after":  { "version": "1.1", "permissions": ["storage"], "hostPermissions": ["<all_urls>"], "store": { "status": "ok", "offeredBy": "Original Developer", "email": "dev@old.example" } },
+      "expect": []
+    },
+    {
+      "name": "developer account compromised, update asks for all sites",
+      "kind": "attack",
+      "before": { "version": "3.1", "permissions": ["storage"], "hostPermissions": ["https://example.com/*"], "store": { "status": "ok", "offeredBy": "Original Developer" } },
+      "after":  { "version": "3.2", "permissions": ["storage"], "hostPermissions": ["<all_urls>"], "store": { "status": "ok", "offeredBy": "Original Developer" } },
+      "expect": ["new_hosts"]
+    },
+    {
+      "name": "built by the attacker from the start: no change to observe",
+      "kind": "attack",
+      "limitation": "There was never a legitimate version to compare with. Only the access level is visible.",
+      "before": { "version": "1.0", "permissions": ["storage"], "hostPermissions": ["<all_urls>"], "store": { "status": "ok", "offeredBy": "Attacker Persona" } },
+      "after":  { "version": "1.4", "permissions": ["storage"], "hostPermissions": ["<all_urls>"], "store": { "status": "ok", "offeredBy": "Attacker Persona" } },
+      "expect": []
+    },
+    {
+      "name": "removed from the store after public disclosure",
+      "kind": "attack",
+      "after_disclosure": true,
+      "before": { "version": "1.1", "permissions": ["storage"], "hostPermissions": ["<all_urls>"], "store": { "status": "ok", "offeredBy": "Northwind Digital LLC" } },
+      "after":  { "version": "1.1", "permissions": ["storage"], "hostPermissions": ["<all_urls>"], "store": { "status": "not_found" } },
+      "expect": ["removed_from_store"]
+    },
+    {
+      "name": "legitimate: version bump only",
+      "kind": "legitimate",
+      "before": { "version": "1.0", "permissions": ["storage"], "hostPermissions": ["https://example.com/*"], "store": { "status": "ok", "offeredBy": "Original Developer" } },
+      "after":  { "version": "1.1", "permissions": ["storage"], "hostPermissions": ["https://example.com/*"], "store": { "status": "ok", "offeredBy": "Original Developer" } },
+      "expect": []
+    },
+    {
+      "name": "legitimate: all-sites access written another way",
+      "kind": "legitimate",
+      "before": { "version": "1.0", "permissions": ["storage"], "hostPermissions": ["<all_urls>"], "store": { "status": "ok", "offeredBy": "Original Developer" } },
+      "after":  { "version": "1.1", "permissions": ["storage"], "hostPermissions": ["*://*/*"], "store": { "status": "ok", "offeredBy": "Original Developer" } },
+      "expect": []
+    },
+    {
+      "name": "legitimate: developer registers as a business with the same email",
+      "kind": "legitimate",
+      "before": { "version": "1.0", "permissions": ["storage"], "hostPermissions": [], "store": { "status": "ok", "offeredBy": "Jane Doe", "email": "jane@example.com" } },
+      "after":  { "version": "1.1", "permissions": ["storage"], "hostPermissions": [], "store": { "status": "ok", "developerName": "Doe Software Ltd", "email": "jane@example.com" } },
+      "expect": ["developer_renamed"]
+    },
+    {
+      "name": "legitimate: the store did not answer",
+      "kind": "legitimate",
+      "before": { "version": "1.0", "permissions": ["storage"], "hostPermissions": [], "store": { "status": "ok", "offeredBy": "Original Developer" } },
+      "after":  { "version": "1.0", "permissions": ["storage"], "hostPermissions": [], "store": { "status": "error" } },
+      "expect": []
+    },
+    {
+      "name": "legitimate: one host widens to its whole domain",
+      "kind": "legitimate",
+      "before": { "version": "1.0", "permissions": ["storage"], "hostPermissions": ["https://mail.example.com/*"], "store": { "status": "ok", "offeredBy": "Original Developer" } },
+      "after":  { "version": "1.1", "permissions": ["storage"], "hostPermissions": ["https://*.example.com/*"], "store": { "status": "ok", "offeredBy": "Original Developer" } },
+      "expect": ["new_hosts"]
+    }
+  ]
+}

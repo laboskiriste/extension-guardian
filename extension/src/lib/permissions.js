@@ -271,6 +271,42 @@ export function isWildcardDomain(pattern) {
   return /^(\*|https?|wss?|ftp):\/\/\*\.[^/]+\//.test(pattern);
 }
 
+// A match pattern split into its parts, or null if it isn't one.
+function parsePattern(pattern) {
+  if (pattern === '<all_urls>') return { scheme: 'all', host: '*', path: '/*' };
+  const m = /^([^:]+):\/\/([^/]*)(\/.*)?$/.exec(pattern);
+  return m ? { scheme: m[1], host: m[2].toLowerCase(), path: m[3] ?? '/' } : null;
+}
+
+const schemeCovers = (a, b) => a === 'all' || (b !== 'all' && (a === b || (a === '*' && ['http', 'https'].includes(b))));
+
+function hostCovers(a, b) {
+  if (a === '*') return true;
+  if (b === '*') return false;
+  if (!a.startsWith('*.')) return a === b;
+  const base = a.slice(2);
+  const under = (h) => h === base || h.endsWith(`.${base}`);
+  return under(b.startsWith('*.') ? b.slice(2) : b);
+}
+
+const pathCovers = (a, b) => a === '/*' || a === b || (a.endsWith('*') && b.startsWith(a.slice(0, -1)));
+
+// Whether match pattern `a` already gives all the access `b` would.
+export function covers(a, b) {
+  const x = parsePattern(a);
+  const y = parsePattern(b);
+  if (!x || !y) return a === b;
+  return schemeCovers(x.scheme, y.scheme) && hostCovers(x.host, y.host) && pathCovers(x.path, y.path);
+}
+
+// The patterns in `cur` that reach further than anything in `prev`. Different
+// spellings of the same access ("<all_urls>" and "*://*/*", or a host already
+// under a wildcard domain) are not new.
+export function uncoveredHosts(prev, cur) {
+  const everything = prev.some(isBroadHost);
+  return cur.filter((p) => !(everything && isBroadHost(p)) && !prev.some((q) => covers(q, p)));
+}
+
 // Turns a match pattern like "https://*.google.com/*" into "google.com".
 export function hostLabel(pattern) {
   if (pattern.startsWith('file:')) return 'files on your computer';

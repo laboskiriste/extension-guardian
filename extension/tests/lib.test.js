@@ -342,14 +342,37 @@ test('a store listing with no users and no contact', () => {
   assert.equal(r.level, 'low');
 });
 
+test('the same access written another way is not a change, but wider access is', () => {
+  const s = (hosts) => snapshotOf(ext({ hostPermissions: hosts }));
+  const types = (a, b) => diffSnapshots(s(a), s(b)).map((c) => [c.type, c.severity]);
+  // Equivalent spellings of all sites.
+  assert.deepEqual(types(['<all_urls>'], ['*://*/*']), []);
+  assert.deepEqual(types(['*://*/*'], ['<all_urls>']), []);
+  assert.deepEqual(types(['https://*/*', 'http://*/*'], ['*://*/*']), []);
+  // A host already under a wildcard domain, an http host under a * scheme.
+  assert.deepEqual(types(['https://*.example.com/*'], ['https://mail.example.com/*']), []);
+  assert.deepEqual(types(['https://*.example.com/*'], ['https://example.com/*']), []);
+  assert.deepEqual(types(['*://example.com/*'], ['https://example.com/*', 'http://example.com/*']), []);
+  assert.deepEqual(types(['https://example.com/*'], ['https://example.com/*']), []);
+  // Wider access: a host becomes its whole domain, or the paths widen, or the scheme does.
+  assert.deepEqual(types(['https://mail.example.com/*'], ['https://*.example.com/*']), [['new_hosts', 'medium']]);
+  assert.deepEqual(types(['https://example.com/app/*'], ['https://example.com/*']), [['new_hosts', 'medium']]);
+  assert.deepEqual(types(['https://example.com/*'], ['*://example.com/*']), [['new_hosts', 'medium']]);
+  assert.deepEqual(types(['https://example.com/*'], ['https://example.org/*']), [['new_hosts', 'medium']]);
+  assert.deepEqual(types(['https://*.example.com/*'], ['https://*/*']), [['new_hosts', 'high']]);
+  // The alert says that a whole domain is now covered.
+  const widened = diffSnapshots(s(['https://mail.example.com/*']), s(['https://*.example.com/*']));
+  assert.equal(widened[0].detail, 'example.com and its subdomains');
+});
+
 test('host permission changes', () => {
   const s = (hosts) => snapshotOf(ext({ hostPermissions: hosts }));
   const narrow = diffSnapshots(s(['https://a.com/*']), s(['https://a.com/*', 'https://*.b.com/*', 'http://b.com/*']));
-  assert.deepEqual(narrow.map((c) => [c.type, c.severity, c.detail]), [['new_hosts', 'medium', 'b.com']]);
+  assert.deepEqual(narrow.map((c) => [c.type, c.severity, c.detail]), [['new_hosts', 'medium', 'b.com and its subdomains']]);
   const broad = diffSnapshots(s(['https://a.com/*']), s(['*://*/*']));
   assert.deepEqual(broad.map((c) => [c.type, c.severity]), [['new_hosts', 'high']]);
   // Already on every site: another pattern adds nothing to worry about.
-  assert.equal(diffSnapshots(s(['<all_urls>']), s(['<all_urls>', 'https://*/*']))[0].severity, 'medium');
+  assert.deepEqual(diffSnapshots(s(['<all_urls>']), s(['<all_urls>', 'https://*/*'])), [], 'the same access spelled twice is not new');
   assert.deepEqual(diffSnapshots(s(['https://a.com/*', 'https://b.com/*']), s(['https://b.com/*'])), [], 'removed hosts are fine');
   assert.deepEqual(diffSnapshots(s(['https://b.com/*', 'https://a.com/*']), s(['https://a.com/*', 'https://b.com/*'])), [], 'order does not matter');
 });

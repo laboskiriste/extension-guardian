@@ -1,0 +1,114 @@
+{
+  "source": "Socket research, August 2026 (see server/src/incidents.js for links)",
+  "note": "IDs, names and which extensions were bought from their developers are documented. No manifest or publisher snapshot from before or after the malicious update is public, so none is invented here.",
+  "cases": [
+    {
+      "id": "pkoccklolohdacbfooifnpebakpbeipc",
+      "name": "Enable Right Click & Copy – Smart Unlock + OCR",
+      "acquired": true,
+      "history": "not available"
+    },
+    {
+      "id": "fegckejpfnlmfgkfjpinlbgmeeijjkel",
+      "name": "RapidLens – Google Lens for Screen Search & Images",
+      "acquired": true,
+      "history": "not available"
+    },
+    {
+      "id": "kdenlnncndfnhkognokgfpabgkgehodd",
+      "name": "QuickLens – Search Screen with Google Lens",
+      "acquired": true,
+      "history": "not available"
+    },
+    {
+      "id": "jamminefolhgepgihbmcjjhgldbfcikp",
+      "name": "Password Protect PDF",
+      "acquired": true,
+      "history": "not available"
+    },
+    {
+      "id": "fcgdejjichpgfaaafflplhfijcnieopb",
+      "name": "PixelCheck",
+      "acquired": false,
+      "history": "not available"
+    },
+    {
+      "id": "cfpnjdbpojpcongfaefcamjbaolpelcd",
+      "name": "Creative Library – Ad Spy Tool",
+      "acquired": false,
+      "history": "not available"
+    },
+    {
+      "id": "aapdalkmclfaahehnmicbglkohkldhne",
+      "name": "Website Traffic Checker: MirrorSphere SEO Stats",
+      "acquired": false,
+      "history": "not available"
+    },
+    {
+      "id": "dkdadldmiefjldmegbjbnhhfddnkhlhm",
+      "name": "Site Signal – Website Traffic & SEO Checker",
+      "acquired": false,
+      "history": "not available"
+    },
+    {
+      "id": "fjmlhlkccegopebcllcmafahkmeejpph",
+      "name": "SEO Pulse Pro – Website Traffic & SEO Analyzer",
+      "acquired": false,
+      "history": "not available"
+    },
+    {
+      "id": "iekoapohahgmogbagegmcgplbkikcgke",
+      "name": "Private Crypto News Reader",
+      "acquired": false,
+      "history": "not available"
+    },
+    {
+      "id": "ahpnnnjbnfbhoikhohglpohnoocjcoco",
+      "name": "Blockfolio: Address Monitor",
+      "acquired": false,
+      "history": "not available"
+    },
+    {
+      "id": "oeacadlaclegkkkdehjmiifnjhcekclj",
+      "name": "Crypto Rates & Fiat Converter",
+      "acquired": false,
+      "history": "not available"
+    },
+    {
+      "id": "jmlgannjlbliikgcaieomgmcnfplglea",
+      "name": "Crypto Alerter: Price Alarms & Volatility Warnings",
+      "acquired": false,
+      "history": "not available"
+    },
+    {
+      "id": "lhmcajhgadanidbopgaoobjlldegjmke",
+      "name": "DeFi Pulse Tracker",
+      "acquired": false,
+      "history": "not available"
+    },
+    {
+      "id": "gfackggoapepdmnjnkblogdcjpgcjiak",
+      "name": "Crypto Price Badge: Quick Glance",
+      "acquired": false,
+      "history": "not available"
+    },
+    {
+      "id": "hfijkbdkpidafdbeebnnkhfccildbcle",
+      "name": "Multi-Chain Explorer",
+      "acquired": false,
+      "history": "not available"
+    },
+    {
+      "id": "pcngchfbfgejllcbhmeadjhiebebiome",
+      "name": "LedgerLook: Wallet Checker",
+      "acquired": false,
+      "history": "not available"
+    },
+    {
+      "id": "aodkjdeghbjiaienipfjkbpcikkacbcp",
+      "name": "Meta & Facebook Ad Library Spy – Save Ads, Finder, Downloader | FeedX-Ray",
+      "acquired": false,
+      "history": "not available"
+    }
+  ]
+}
