@@ -61,6 +61,10 @@ Point `extension/src/config.js` at `http://localhost:8787`, open `chrome://exten
 
 False alarms and missed warnings are the most useful reports. Please [open an issue](../../issues) and include the extension's store link.
 
+## Support
+
+Extension Guardian is free, with no ads and no tracking. If it is useful to you, you can [sponsor the developer on GitHub](https://github.com/sponsors/laboskiriste). Nothing is locked behind it.
+
 ## License
 
 [MIT](LICENSE)

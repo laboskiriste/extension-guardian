@@ -22,13 +22,34 @@ const check = (where, label, info) => {
   else console.log(`ok  ${where}: ${label}: ${info.developerName ?? info.offeredBy}, ${info.users} users`);
 };
 
-for (const [id, label] of Object.entries(IDS)) {
+// The store page sometimes comes back without the user count or developer for a
+// single request, so a listing gets a few tries before it counts as a problem.
+const ATTEMPTS = 3;
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+const readStore = async (id) => {
   const res = await fetch(`https://chromewebstore.google.com/detail/${id}?hl=en`, {
     headers: { 'User-Agent': USER_AGENT, 'Accept-Language': 'en-US' },
     signal: AbortSignal.timeout(20000),
   });
-  if (!res.ok) problems.push(`store: ${label} answered ${res.status}`);
-  else check('store', label, parseStorePage(await res.text()));
+  return res.ok ? { info: parseStorePage(await res.text()) } : { status: res.status };
+};
+
+const isComplete = (info) => info?.status === 'ok' && ['title', 'version', 'users'].every((f) => info[f]);
+
+for (const [id, label] of Object.entries(IDS)) {
+  let result;
+  for (let attempt = 1; attempt <= ATTEMPTS; attempt++) {
+    try {
+      result = await readStore(id);
+    } catch (err) {
+      result = { error: err.message };
+    }
+    if (isComplete(result.info)) break;
+    if (attempt < ATTEMPTS) await sleep(5000 * attempt);
+  }
+  if (result.info) check('store', label, result.info);
+  else problems.push(`store: ${label} ${result.status ? `answered ${result.status}` : `failed (${result.error})`}`);
 }
 
 const res = await fetch(`${SERVER}/v1/store?ids=${Object.keys(IDS).join(',')}`, { signal: AbortSignal.timeout(30000) });

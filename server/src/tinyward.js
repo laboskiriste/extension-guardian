@@ -264,7 +264,7 @@ export function renderTinywardHome() {
 </main>
 <footer><div class="wrap foot">
   <a class="brand" href="/">${MARK}Tinyward</a>
-  <nav><a href="https://mastodon.social/@tinyward">Mastodon</a><a href="https://bsky.app/profile/tinyward.org">Bluesky</a><a href="https://github.com/laboskiriste">GitHub</a></nav>
+  <nav><a href="https://mastodon.social/@tinyward">Mastodon</a><a href="https://bsky.app/profile/tinyward.org">Bluesky</a><a href="https://github.com/laboskiriste">GitHub</a><a href="https://github.com/sponsors/laboskiriste">Sponsor</a></nav>
 </div></footer>
 </body>
 </html>`;

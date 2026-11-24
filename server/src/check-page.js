@@ -437,7 +437,7 @@ ${structured ? jsonLd(structured) : ''}
 ${body}
 </main>
 <footer class="${wrap}">
-  <a href="${STORE_LINK}">Extension Guardian</a> · <a href="/popular">Popular extensions</a> · <a href="${REPORT_PATH}">Popular extensions report</a> · <a href="${INCIDENTS_PATH}">Incidents</a> · <a href="${HOW_PATH}">How it works</a> · <a href="${SELL_PATH}">For developers</a> · <a href="${GITHUB_LINK}">Source</a> · <a href="/privacy">Privacy</a><br>
+  <a href="${STORE_LINK}">Extension Guardian</a> · <a href="/popular">Popular extensions</a> · <a href="${REPORT_PATH}">Popular extensions report</a> · <a href="${INCIDENTS_PATH}">Incidents</a> · <a href="${HOW_PATH}">How it works</a> · <a href="${SELL_PATH}">For developers</a> · <a href="${GITHUB_LINK}">Source</a> · <a href="https://github.com/sponsors/laboskiriste">Sponsor</a> · <a href="/privacy">Privacy</a><br>
   Based only on the public Chrome Web Store listing. Not a malware scan.<br>
   A Tinyward project. Also from Tinyward: <a href="${UNSEEN_LINK}">Unseen</a>, which blocks email tracking pixels in Gmail.
 </footer>
