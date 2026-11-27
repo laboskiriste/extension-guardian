@@ -5,6 +5,7 @@
 import { INCIDENTS, findIncident, incidentFor, incidentPath, reportedName } from './incidents.js';
 import { REPORT } from './report-data.js';
 import { replacementFor } from './replacements.js';
+import { historyFor } from './history.js';
 import { recommend } from '../../extension/src/lib/risk.js';
 
 const STORE_LINK = 'https://chromewebstore.google.com/detail/extension-guardian/mpceklcidiadoneogfmpkjpadihmlcjd';
@@ -109,6 +110,20 @@ function incidentHtml(id) {
   </section>`;
 }
 
+// Dated, sourced facts about the owner of a well-known extension. Not a verdict.
+function historyHtml(id) {
+  const h = historyFor(id);
+  if (!h) return '';
+  const items = h.items.map((i) => `<li><strong>${escapeHtml(i.when)}:</strong> ${escapeHtml(i.text)}</li>`).join('');
+  const sources = h.sources.map((x) => `<a href="${escapeHtml(x.url)}" rel="noopener">${escapeHtml(x.label)}</a>`).join(' · ');
+  return `
+  <section class="card">
+    <h2>What is on the public record</h2>
+    <ul class="text">${items}</ul>
+    <p class="muted note">These are reported facts, not a verdict on whether the extension is safe today. Sources: ${sources}. Checked ${escapeHtml(h.checked)}.</p>
+  </section>`;
+}
+
 // What to use instead of a well-known extension that left the store.
 function replacementHtml(id) {
   const r = replacementFor(id);
@@ -192,7 +207,7 @@ function resultHtml(id, info, access = null) {
       <div><strong>${v.label}</strong><span>${v.text}</span></div></div>
     ${v.action ? `<p class="text"><strong>What should I do?</strong> ${escapeHtml(v.action)}</p>` : ''}
     ${gone ? '' : `<p class="muted note">This checker has no history, so it can't tell whether this extension changed owner or asked for new permissions in the past. Extension Guardian watches the ones you have installed for that.</p>`}
-  </section>${gone ? '' : accessHtml(access)}${replacementHtml(id)}
+  </section>${gone ? '' : accessHtml(access)}${gone ? '' : historyHtml(id)}${replacementHtml(id)}
   ${info.status === 'ok' ? `<section class="card">
     <h2>Who makes it</h2><dl>${developerRows(info)}</dl>
     <p class="store-link"><a href="${storeUrl}" rel="noopener">View in the Chrome Web Store ↗</a></p>

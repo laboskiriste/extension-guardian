@@ -401,3 +401,13 @@ test('the sitemap lists the pages of removed incident extensions, at their canon
     assert.ok(!locs.some((p) => p.endsWith(`/${e.id}`)), `${e.name} is Edge only`);
   }
 });
+
+test('a well-known extension shows its sourced history, an unknown one shows none', () => {
+  const HONEY = 'bmnlcjabgnpnenekpadlanbbkooimhnj';
+  const known = renderCheckPage({ id: HONEY, info: { status: 'ok', title: 'Honey' } });
+  assert.match(known, /What is on the public record/);
+  assert.match(known, /href="https:\/\/9to5google\.com\//);
+  assert.match(known, /not a verdict/);
+  const unknown = renderCheckPage({ id: 'a'.repeat(32), info: { status: 'ok', title: 'X' } });
+  assert.doesNotMatch(unknown, /public record/);
+});
